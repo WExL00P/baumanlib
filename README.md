@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://i.ibb.co/khxyJBC/computer.png">
+    <img src="https://sun9-36.userapi.com/c857236/v857236684/186718/on0jc3AcTDQ.jpg" width=128>
     <h1>WExL00P Team Project</h1>
     <p>База данных по специальности с удобным поиском и рейтингом. Мудл на максималках!</p>
 </div>
