@@ -19,27 +19,27 @@
 <table>
     <tr>
         <td align="center">
-            <b>Матвей Котцов</b><br>
+            <a href="https://git.iu7.bmstu.ru/kmd19u791">Матвей Котцов</a><br>
             Руководитель проекта<br>
             <i>ИУ7-26Б</i>
         </td>
         <td align="center">
-            <b>Максим Борисов</b><br> 
+            <a href="https://git.iu7.bmstu.ru/bma19u390">Максим Борисов</a><br> 
             Разработчик<br>
             <i>ИУ7-26Б</i>
         </td>
         <td align="center">
-            <b>Кирилл Кузьмин</b><br>
+            <a href="https://git.iu7.bmstu.ru/kko19u794">Кирилл Кузьмин</a><br>
             Разработчик<br>
             <i>ИУ7-26Б</i>
         </td>
         <td align="center">
-            <b>Даниил Порошин</b><br>
+            <a href="https://git.iu7.bmstu.ru/pdyu19u833">Даниил Порошин</a><br>
             Системный администратор<br>
             <i>ИУ7-26Б</i>
         </td>
         <td align="center">
-            <b>Мария Слепокурова</b><br>
+            <a href="https://git.iu7.bmstu.ru/smf19u641">Мария Слепокурова</a><br>
             UX дизайнер<br>
             <i>ИУ7-26Б</i>
         </td>
