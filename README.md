@@ -19,6 +19,10 @@
 <table>
     <tr>
         <td align="center">
+            <a href="https://git.iu7.bmstu.ru/teopalmer">Теона Садулаева</a><br>
+            Ментор
+        </td>
+        <td align="center">
             <a href="https://git.iu7.bmstu.ru/kmd19u791">Матвей Котцов</a><br>
             Руководитель проекта<br>
             <i>ИУ7-26Б</i>
