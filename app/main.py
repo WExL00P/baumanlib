@@ -10,8 +10,8 @@ if not os.getenv('HEROKU'):
     bot.polling()
     bot.set_webhook(os.getenv('APP_URL'))
 else:
-    class handler(http.server.BaseHTTPRequestHandler):
-        def do_POST(self):
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_post(self):
             self.send_response(200)
             self.end_headers()
             content_length = int(self.headers['Content-Length'])
@@ -22,5 +22,5 @@ else:
 
     bot.set_webhook(os.getenv('APP_URL'))
     server_address = ('0.0.0.0', int(os.getenv('PORT') or 5000))
-    server = http.server.HTTPServer(server_address, handler)
+    server = http.server.HTTPServer(server_address, Handler)
     server.serve_forever()
