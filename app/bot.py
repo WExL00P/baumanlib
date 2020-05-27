@@ -12,10 +12,15 @@ bot = telebot.TeleBot(
     next_step_backend=utils.RedisHandlerBackend(redis_conn)
 )
 
-@bot.message_handler()
-def echo(message):
-    bot.reply_to(message, message.text)
 
-@bot.message_handler(content_types=['document'])
-def echo_doc(message):
-    bot.send_document(message.chat.id, message.document.file_id)
+@bot.message_handler(commands=['start', 'help'])
+def handle_start_help(message):
+    about_msg = 'Привет! Этот бот - база данных по специальности с' \
+                'удобным поиском и рейтингом. Мудл на максималках!\n\n' \
+                'Вы можете:\n\n' \
+                '📤 Загружать различные учебные материалы\n' \
+                '🔍 Искать уже загруженные материалы по ключевым словам, темам\n' \
+                '📈 Оценивать загруженные материалы, давая другим возможность' \
+                'находить достойные материалы быстрее'
+    
+    bot.send_message(message.chat.id, about_msg)
