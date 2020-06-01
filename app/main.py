@@ -11,7 +11,7 @@ if not os.getenv('HEROKU'):
     bot.set_webhook(os.getenv('APP_URL'))
 else:
     class Handler(http.server.BaseHTTPRequestHandler):
-        def do_post(self):
+        def do_POST(self):
             self.send_response(200)
             self.end_headers()
             content_length = int(self.headers['Content-Length'])
