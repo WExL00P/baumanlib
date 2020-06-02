@@ -141,9 +141,9 @@ def check_file(message, options):
         cursor = db_conn.cursor()
         
         cursor.execute("INSERT INTO resources (title, author_id, course, \
-        discipline, rating, type, file_id, link) VALUES ('{0}', {1}, \
-        {2}, '{3}', {4}, {5}, '{6}', '{7}')".format(options['material'], str(author_id), \
-        str(options['course']), options['subject'], '0', '0', file_id, 'ssilka'))
+        discipline, rating, type, file_id) VALUES ('{0}', {1}, \
+        {2}, '{3}', {4}, {5}, '{6}')".format(options['material'], str(author_id), \
+        str(options['course']), options['subject'], '0', '0', file_id))
 
         cursor.close()
         db_conn.commit()
