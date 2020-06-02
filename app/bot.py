@@ -9,7 +9,7 @@ redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
 bot = telebot.TeleBot(
     os.getenv('TELEGRAM_TOKEN'),
-    next_step_backend=utils.RedisHandlerBackend(redis_conn)
+#    next_step_backend=utils.RedisHandlerBackend(redis_conn)
 )
 
 
@@ -29,79 +29,114 @@ def handle_start_help(message):
 
 @bot.message_handler(commands=['search'])
 def handle_search(message):
+    options = {}
     chat_id = message.chat.id
     about_search_msg = 'Введи поисковый запрос\n\n' \
                 'Чтобы выйти из режима поиска, введите /cancel'
 
-    bot.send_message(chat_id, about_search_msg)
+    instruction = bot.send_message(chat_id, about_search_msg)
+    bot.register_next_step_handler(instruction, lambda user_answer: check_query(user_answer, options))
+
+
+def check_query(message):
+    chat_id = message.chat.id
+    if message.text == '/cancel':
+        handle_cancel(message, 'search')
+    else:
+        number_of_materials = '10'
+        message_success = 'Мне удалось найти ' + number_of_materials + \
+                ' материалов.\nВот они:\n\n'
+
+        bot.send_message(chat_id, message_success)
 
 
 @bot.message_handler(commands=['upload'])
 def handle_upload(message):
     chat_id = message.chat.id
     if check_verification():
+        options = {'material': None, 'course': None, 'subject': None, 'file': None}
         about_upload_msg = 'Введите название материала\n'
-        user_answer = bot.send_message(chat_id, about_upload_msg)
-        bot.register_next_step_handler(user_answer, check_material)
+        instruction = bot.send_message(chat_id, about_upload_msg)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_material(user_answer, options))
     else:
         about_upload_msg = 'Для загрузки файлов необходима регистрация.\n\n' \
                 'Укажите свое имя и фамилию.\n\n' \
                 'Чтобы выйти из режима регистрации, введите /cancel'
     
-        user_answer = bot.send_message(chat_id, about_upload_msg)
-        bot.register_next_step_handler(user_answer, check_name_surname)
+        instruction = bot.send_message(chat_id, about_upload_msg)
+        bot.register_next_step_handler(instruction, check_name_surname)
 
 
 def check_verification():
     return True
 
 
-def check_material(message):
+def check_material(message, options):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
     else:
+        options['material'] = message.text
         message_success = 'Укажите курс, к которому относится материал'
 
-        user_answer = bot.send_message(chat_id, message_success)
-        bot.register_next_step_handler(user_answer, check_course)
+        instruction = bot.send_message(chat_id, message_success)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_course(user_answer, options))
 
 
-def check_course(message):
+def check_course(message, options):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
     else:
+        options['course'] = message.text
         message_success = 'Укажите предмет, к которому относится материал'
 
-        user_answer = bot.send_message(chat_id, message_success)
-        bot.register_next_step_handler(user_answer, check_subject)
+        instruction = bot.send_message(chat_id, message_success)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_subject(user_answer, options))
 
 
-def check_subject(message):
+def check_subject(message, options):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
     else:
+        options['subject'] = message.text
         message_success = 'Хорошо, а теперь загрузите файл.'
 
-        user_answer = bot.send_message(chat_id, message_success)
-        bot.register_next_step_handler(user_answer, check_file)
+        instruction = bot.send_message(chat_id, message_success)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_file(user_answer, options))
 
 
-def check_file(message):
+def check_file(message, options):
     chat_id = message.chat.id
+    author_id = message.from_user.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
     elif message.content_type == 'document':
-        message_success = 'Отлично! Ваш материал добавлен в базу.\n\n'
+        file_id = message.document.file_id
+        options['file'] = message.document.file_name
+        cursor = db_conn.cursor()
+        
+        cursor.execute("INSERT INTO resources (title, author_id, course, \
+        discipline, rating, type, file_id, link) VALUES ('{0}', {1}, \
+        {2}, '{3}', {4}, {5}, '{6}', '{7}')".format(options['material'], str(author_id), \
+        str(options['course']), options['subject'], '0', '0', file_id, 'ssilka'))
+
+        cursor.close()
+        db_conn.commit()
+        message_success = 'Отлично! Ваш материал добавлен в базу.'
 
         bot.send_message(chat_id, message_success)
     else:
         message_failure = 'Вы отправили что-то не то'
 
-        user_answer = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(user_answer, check_file)
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_file(user_answer, options))
 
 
 def check_name_surname(message):
@@ -112,8 +147,8 @@ def check_name_surname(message):
         message_success = 'Приятно познакомиться, ' + str(message.text) + '!\n' \
                 'Укажите адрес своей почты в домене bmstu.ru\n'
 
-        user_answer = bot.send_message(chat_id, message_success)
-        bot.register_next_step_handler(user_answer, check_email)
+        instruction = bot.send_message(chat_id, message_success)
+        bot.register_next_step_handler(instruction, check_email)
 
 
 def check_email(message):
