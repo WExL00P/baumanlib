@@ -3,6 +3,7 @@ import telebot
 import psycopg2
 import redis
 import utils
+from check_correct import *
 
 db_conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require')
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
@@ -76,39 +77,57 @@ def check_material(message, options):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
-    else:
+    elif is_material_correct(message):
         options['material'] = message.text
         message_success = 'Укажите курс, к которому относится материал'
 
         instruction = bot.send_message(chat_id, message_success)
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_course(user_answer, options))
+    else:
+        message_failure = 'Упс. Попробуй ещё раз!'
+
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_material(user_answer, options))
 
 
 def check_course(message, options):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
-    else:
+    elif is_course_correct(message):
         options['course'] = message.text
         message_success = 'Укажите предмет, к которому относится материал'
 
         instruction = bot.send_message(chat_id, message_success)
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_subject(user_answer, options))
+    else:
+        message_failure = 'Упс. Попробуй ещё раз!'
+
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_course(user_answer, options))
 
 
 def check_subject(message, options):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
-    else:
+    elif is_subject_correct(message):
         options['subject'] = message.text
         message_success = 'Хорошо, а теперь загрузите файл.'
 
         instruction = bot.send_message(chat_id, message_success)
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_file(user_answer, options))
+    else:
+        message_failure = 'Упс. Попробуй ещё раз!'
+
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_subject(user_answer, options))
 
 
 def check_file(message, options):
@@ -116,7 +135,7 @@ def check_file(message, options):
     author_id = message.from_user.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
-    elif message.content_type == 'document':
+    elif message.content_type == 'document' and is_file_correct(message):
         file_id = message.document.file_id
         options['file'] = message.document.file_name
         cursor = db_conn.cursor()
@@ -143,23 +162,35 @@ def check_name_surname(message):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
-    else:
+    elif is_name_surname_correct(message):
         message_success = 'Приятно познакомиться, ' + str(message.text) + '!\n' \
                 'Укажите адрес своей почты в домене bmstu.ru\n'
 
         instruction = bot.send_message(chat_id, message_success)
         bot.register_next_step_handler(instruction, check_email)
+    else:
+        message_failure = 'Упс. Попробуй ещё раз!'
+
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_name_surname(user_answer, options))
 
 
 def check_email(message):
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'upload')
-    else:
+    elif is_email_correct:
         message_success = 'Отлично! Классная почта!\n' \
                 'Теперь отправьте с этой почты на bot@bot.bot любое сообщение\n'
                 
         bot.send_message(chat_id, message_success)
+    else:
+        message_failure = 'Упс. Попробуй ещё раз!'
+
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, lambda user_answer: \
+            check_email(user_answer, options))
 
 
 @bot.message_handler(commands=['cancel'])
