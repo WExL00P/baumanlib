@@ -8,7 +8,7 @@ subjects = ["ПРОГРАММИРОВАНИЕ", "ОСНОВЫ ПРОГРАММН
 
 def is_material_correct(message):
     text = message.text
-    return len(text) < 256
+    return len(text) < 256 and text[0] != '/'
 
 
 def is_course_correct(message):
