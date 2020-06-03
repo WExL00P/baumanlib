@@ -9,11 +9,22 @@ from check_correct import *
 db_conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require')
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
-TOKEN = os.getenv('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(
-    TOKEN,
+    os.getenv('TELEGRAM_TOKEN'),
 #    next_step_backend=utils.RedisHandlerBackend(redis_conn)
 )
+
+commands_list = ['/start', '/help', '/search', '/about', '/upload', '/cancel']
+
+def call(message):
+    if message.text == '/start' or message.text == '/help':
+        handle_start_help(message)
+    elif message.text == '/search':
+        handle_search(message)
+    elif message.text == '/about':
+        handle_about(message)
+    else:
+        handle_upload(message)
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -42,10 +53,17 @@ def handle_search(message):
 
 def check_query(message):
     count = 0
+    notes = []
     text = message.text.upper()
     chat_id = message.chat.id
-    if message.text == '/cancel':
+    if message.text in commands_list:
         handle_cancel(message, 'search')
+        call(message)
+    elif message.text[0] == '/':
+        message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+
+        instruction = bot.send_message(chat_id, message_failure)
+        bot.register_next_step_handler(instruction, check_query)
     else:
         cursor = db_conn.cursor()
         cursor.execute("SELECT title, course, discipline, file_id from resources")
@@ -53,14 +71,19 @@ def check_query(message):
         for row in rows:
             if (row[0].upper().find(text) != -1 or str(row[1]).find(text) != -1 or \
                 subjects[int(row[2]) - 1].find(text) != -1):
-                message_success = "Материал: " + row[0] + "\nКурс: " + str(row[1]) + "\nПредмет: " + \
-                        subjects[int(row[2]) - 1].capitalize() + "\nФайл: "
-                bot.send_message(chat_id, message_success)
-                bot.send_document(chat_id, row[3])
+                note = (row[0], int(row[1]), row[2], row[3])
+                notes.append(note)
                 count += 1
         if count == 0:
             message_failure = "Упс. Ничего не найдено.\n"
             bot.send_message(chat_id, message_failure)
+        else:
+            notes.sort(key = lambda x: x[1])
+            for note in notes:
+                message_success = "Материал: " + note[0] + "\nКурс: " + str(note[1]) + "\nПредмет: " + \
+                        subjects[int(note[2]) - 1].capitalize() + "\nФайл: "
+                bot.send_message(chat_id, message_success)
+                bot.send_document(chat_id, note[3])
         cursor.close()
 
 
@@ -88,9 +111,10 @@ def check_verification():
 
 def check_material(message, options):
     chat_id = message.chat.id
-    if message.text == '/cancel':
+    if message.text in commands_list:
         handle_cancel(message, 'upload')
-    elif is_material_correct(message):
+        call(message)
+    elif message.content_type == 'text' and is_material_correct(message):
         options['material'] = message.text
         message_success = 'Укажите курс, к которому относится материал'
 
@@ -98,7 +122,10 @@ def check_material(message, options):
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_course(user_answer, options))
     else:
-        message_failure = 'Упс. Попробуй ещё раз!'
+        if message.text[0] == '/':
+            message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+        else:
+            message_failure = 'Упс. Попробуй ещё раз!'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
@@ -107,9 +134,10 @@ def check_material(message, options):
 
 def check_course(message, options):
     chat_id = message.chat.id
-    if message.text == '/cancel':
+    if message.text in commands_list:
         handle_cancel(message, 'upload')
-    elif is_course_correct(message):
+        call(message)
+    elif message.content_type == 'text' and is_course_correct(message):
         options['course'] = message.text
         message_success = 'Укажите предмет, к которому относится материал'
 
@@ -117,7 +145,10 @@ def check_course(message, options):
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_subject(user_answer, options))
     else:
-        message_failure = 'Упс. Попробуй ещё раз!'
+        if message.text[0] == '/':
+            message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+        else:
+            message_failure = 'Упс. Попробуй ещё раз!'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
@@ -126,9 +157,10 @@ def check_course(message, options):
 
 def check_subject(message, options):
     chat_id = message.chat.id
-    if message.text == '/cancel':
+    if message.text in commands_list:
         handle_cancel(message, 'upload')
-    elif is_subject_correct(message):
+        call(message)
+    elif message.content_type == 'text' and is_subject_correct(message):
         options['subject'] = message.text
         message_success = 'Хорошо, а теперь загрузите файл.'
 
@@ -136,7 +168,10 @@ def check_subject(message, options):
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_file(user_answer, options))
     else:
-        message_failure = 'Упс. Попробуй ещё раз!'
+        if message.text[0] == '/':
+            message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+        else:
+            message_failure = 'Упс. Попробуй ещё раз!'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
@@ -146,8 +181,9 @@ def check_subject(message, options):
 def check_file(message, options):
     chat_id = message.chat.id
     author_id = message.from_user.id
-    if message.text == '/cancel':
+    if message.text in commands_list:
         handle_cancel(message, 'upload')
+        call(message)
     elif message.content_type == 'document' and is_file_correct(message):
         file_id = message.document.file_id
         options['file'] = message.document.file_name
@@ -164,7 +200,10 @@ def check_file(message, options):
 
         bot.send_message(chat_id, message_success)
     else:
-        message_failure = 'Вы отправили что-то не то'
+        if message.text[0] == '/':
+            message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+        else:
+            message_failure = 'Вы отправили что-то не то'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
@@ -173,8 +212,9 @@ def check_file(message, options):
 
 def check_name_surname(message):
     chat_id = message.chat.id
-    if message.text == '/cancel':
-        handle_cancel(message, 'upload')
+    if message.text in commands_list:
+        handle_cancel(message, 'NO NAME')
+        call(message)
     elif is_name_surname_correct(message):
         message_success = 'Приятно познакомиться, ' + str(message.text) + '!\n' \
                 'Укажите адрес своей почты в домене bmstu.ru\n'
@@ -182,7 +222,10 @@ def check_name_surname(message):
         instruction = bot.send_message(chat_id, message_success)
         bot.register_next_step_handler(instruction, check_email)
     else:
-        message_failure = 'Упс. Попробуй ещё раз!'
+        if message.text[0] == '/':
+            message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+        else:
+            message_failure = 'Упс. Попробуй ещё раз!'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
@@ -191,15 +234,19 @@ def check_name_surname(message):
 
 def check_email(message):
     chat_id = message.chat.id
-    if message.text == '/cancel':
-        handle_cancel(message, 'upload')
+    if message.text in commands_list:
+        handle_cancel(message, 'NO NAME')
+        call(message)
     elif is_email_correct:
         message_success = 'Отлично! Классная почта!\n' \
                 'Теперь отправьте с этой почты на bot@bot.bot любое сообщение\n'
                 
         bot.send_message(chat_id, message_success)
     else:
-        message_failure = 'Упс. Попробуй ещё раз!'
+        if message.text[0] == '/':
+            message_failure = 'Неизвестная команда.\nПопробуй ещё раз!'
+        else:
+            message_failure = 'Упс. Попробуй ещё раз!'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
@@ -213,3 +260,11 @@ def handle_cancel(message, mode=None):
         about_cancel_msg = 'Вы вышли из режима ' + mode
 
         bot.send_message(chat_id, about_cancel_msg)
+
+
+@bot.message_handler(commands=['about'])
+def handle_about(message):
+    chat_id = message.chat.id
+    about_msg = 'Максим лох'
+
+    bot.send_message(chat_id, about_msg)
