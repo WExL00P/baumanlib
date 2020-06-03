@@ -75,7 +75,7 @@ def check_query(message):
     if message.text in commands_list:
         handle_cancel(message, 'поиска')
         call(message)
-    elif message.text[0] == '/':
+    elif str(message.text)[0] == '/':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
@@ -133,7 +133,7 @@ def check_material(message, options):
     if message.text in commands_list:
         handle_cancel(message, 'загрузки')
         call(message)
-    elif message.text[0] == '/':
+    elif str(message.text)[0] == '/':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
@@ -161,7 +161,7 @@ def check_course(message, options):
     if message.text in commands_list:
         handle_cancel(message, 'загрузки')
         call(message)
-    elif message.text[0] == '/':
+    elif str(message.text)[0] == '/':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
@@ -189,7 +189,7 @@ def check_subject(message, options):
     if message.text in commands_list:
         handle_cancel(message, 'загрузки')
         call(message)
-    elif message.text[0] == '/':
+    elif str(message.text)[0] == '/':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
@@ -218,13 +218,6 @@ def check_file(message, options):
     if message.text in commands_list:
         handle_cancel(message, 'загрузки')
         call(message)
-    elif message.text[0] == '/':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_file(user_answer, options))
     elif message.content_type == 'document' and is_file_correct(message):
         file_id = message.document.file_id
         options['file'] = message.document.file_name
@@ -254,7 +247,7 @@ def check_name_surname(message):
     if message.text in commands_list:
         handle_cancel(message, 'регистрации')
         call(message)
-    elif message.text[0] == '/':
+    elif str(message.text)[0] == '/':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
@@ -280,7 +273,7 @@ def check_email(message):
     if message.text in commands_list:
         handle_cancel(message, 'регистрации')
         call(message)
-    elif message.text[0] == '/':
+    elif str(message.text)[0] == '/':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
@@ -319,9 +312,9 @@ def handle_about(message):
 
 
 @bot.message_handler(content_types=['text'])
-def handle_other(message):
+def handle_unknown(message):
     chat_id = message.chat.id
-    about_other_msg = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
+    about_unknown_msg = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
+                'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
-    bot.send_message(chat_id, about_other_msg)
+    bot.send_message(chat_id, about_unknown_msg)
