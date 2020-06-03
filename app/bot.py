@@ -3,13 +3,15 @@ import telebot
 import psycopg2
 import redis
 import utils
+import requests
 from check_correct import *
 
 db_conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require')
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
+TOKEN = os.getenv('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(
-    os.getenv('TELEGRAM_TOKEN'),
+    TOKEN,
 #    next_step_backend=utils.RedisHandlerBackend(redis_conn)
 )
 
@@ -30,25 +32,36 @@ def handle_start_help(message):
 
 @bot.message_handler(commands=['search'])
 def handle_search(message):
-    options = {}
     chat_id = message.chat.id
     about_search_msg = 'Введи поисковый запрос\n\n' \
                 'Чтобы выйти из режима поиска, введите /cancel'
 
     instruction = bot.send_message(chat_id, about_search_msg)
-    bot.register_next_step_handler(instruction, lambda user_answer: check_query(user_answer, options))
+    bot.register_next_step_handler(instruction, check_query)
 
 
 def check_query(message):
+    count = 0
+    text = message.text.upper()
     chat_id = message.chat.id
     if message.text == '/cancel':
         handle_cancel(message, 'search')
     else:
-        number_of_materials = '10'
-        message_success = 'Мне удалось найти ' + number_of_materials + \
-                ' материалов.\nВот они:\n\n'
-
-        bot.send_message(chat_id, message_success)
+        cursor = db_conn.cursor()
+        cursor.execute("SELECT title, course, discipline, file_id from resources")
+        rows = cursor.fetchall()
+        for row in rows:
+            if (row[0].upper().find(text) != -1 or str(row[1]).find(text) != -1 or \
+                subjects[int(row[2]) - 1].find(text) != -1):
+                message_success = "Материал: " + row[0] + "\nКурс: " + str(row[1]) + "\nПредмет: " + \
+                        subjects[int(row[2]) - 1].capitalize() + "\nФайл: "
+                bot.send_message(chat_id, message_success)
+                bot.send_document(chat_id, row[3])
+                count += 1
+        if count == 0:
+            message_failure = "Упс. Ничего не найдено.\n"
+            bot.send_message(chat_id, message_failure)
+        cursor.close()
 
 
 @bot.message_handler(commands=['upload'])
