@@ -162,6 +162,7 @@ def rating_up(query):
         cursor.execute("UPDATE resources SET rating=rating+1 \
             WHERE file_id='{}'".format(file_id))
         cursor.close()
+        bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на 1')
     db_conn.commit()
 
 
@@ -210,6 +211,7 @@ def rating_down(query):
         cursor.execute("UPDATE resources SET rating=rating-1 \
                 WHERE file_id='{}'".format(file_id))
         cursor.close()
+        bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на -1')
     db_conn.commit()
     
 
