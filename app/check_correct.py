@@ -22,11 +22,7 @@ def is_course_correct(message):
 
 def is_subject_correct(message):
     text = message.text
-    if text.isdigit():
-        text = int(text)
-        return text >= 1 and text <= 8
-    else:
-        return False
+    return text.upper() in subjects
 
 
 def is_file_correct(message):
