@@ -4,6 +4,7 @@ import psycopg2
 import redis
 import utils
 import requests
+import json
 from check_correct import *
 from telebot import types
 
@@ -85,12 +86,12 @@ def check_query(message):
         bot.register_next_step_handler(instruction, check_query)
     else:
         cursor = db_conn.cursor()
-        cursor.execute("SELECT title, course, discipline, file_id FROM resources")
+        cursor.execute("SELECT id, title, course, discipline, file_id FROM resources")
         rows = cursor.fetchall()
         for row in rows:
-            if (row[0].upper().find(text) != -1 or str(row[1]).find(text) != -1 or \
-                subjects[int(row[2]) - 1].find(text) != -1):
-                note = (row[0], int(row[1]), row[2], row[3])
+            if (row[1].upper().find(text) != -1 or str(row[2]).find(text) != -1 or \
+                subjects[int(row[3]) - 1].find(text) != -1):
+                note = (str(row[0]), row[1], int(row[2]), row[3], row[4])
                 notes.append(note)
                 count += 1
         if count == 0:
@@ -99,73 +100,91 @@ def check_query(message):
                 'загрузи материал по теме!'
             bot.send_message(chat_id, message_failure)
         else:
-            notes.sort(key = lambda x: x[1])
+            notes.sort(key = lambda x: x[2])
             for note in notes:
-                message_success = 'Материал: ' + note[0] + '\nКурс: ' + str(note[1]) + '\nПредмет: ' + \
-                        subjects[int(note[2]) - 1].capitalize() + '\nФайл: '
-                file_info = bot.get_file(note[3])
+                message_success = 'Материал: ' + note[1] + '\nКурс: ' + str(note[2]) + '\nПредмет: ' + \
+                        subjects[int(note[3]) - 1].capitalize() + '\nФайл: '
+                file_info = bot.get_file(note[4])
                 file = 'https://api.telegram.org/file/bot{0}/{1}'.format(TOKEN, file_info.file_path)
                 markup = types.InlineKeyboardMarkup()
                 btn_download = types.InlineKeyboardButton(text = 'Скачать', url = file)
-                btn_up = types.InlineKeyboardButton(text="+1", callback_data="up")
-                btn_down = types.InlineKeyboardButton(text="-1", callback_data="down")
+                up_data = json.dumps({'ident': 'up', 'id': note[0]})
+                btn_up = types.InlineKeyboardButton(text = "+1", callback_data = up_data)
+                down_data = json.dumps({'ident': 'down', 'id': note[0]})
+                btn_down = types.InlineKeyboardButton(text = "-1", callback_data = down_data)
                 markup.add(btn_down, btn_download, btn_up)
                 bot.send_message(chat_id, message_success, reply_markup = markup)
         cursor.close()
 
-
-@bot.inline_handler(lambda query: query.query == 'up')
-def rating_up(message):
-    chat_id = message.chat.id
-    user_id = message.from_user.id
+    
+@bot.callback_query_handler(lambda query: json.loads(query.data)['ident'] == 'up')
+def rating_up(query):
+    user_id = query.from_user.id
+    db_file_id = json.loads(query.data)['id']
     cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id, user_id, mark FROM marks " \
-                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+    cursor.execute("SELECT file_id FROM resources \
+                WHERE id={}".format(db_file_id))
+    rows = cursor.fetchall()
+    file_id = rows[0][0]
+    cursor.close()
+    
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT file_id, user_id, mark FROM marks \
+                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
     rows = cursor.fetchall()
     cursor.close()
     if (len(rows)):
         if (str(rows[0][2]) == '1'):
             cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=0 " \
-                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.execute("UPDATE marks SET mark=0 \
+                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
             cursor.close()
         else:
             cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=1 " \
-                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.execute("UPDATE marks SET mark=1 \
+                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
             cursor.close()
     else:
         cursor = db_conn.cursor()
-        cursor.execute("INSERT INTO marks (file_id, user_id, mark) " \
-                "VALUES ('{}', '{}'. '{}')".format(file_id, user_id, 1))
+        cursor.execute("INSERT INTO marks (file_id, user_id, mark) \
+                VALUES ('{}', {}, {})".format(file_id, str(user_id), '1'))
         cursor.close()
+    db_conn.commit()
 
 
-@bot.inline_handler(lambda query: query.query == 'down')
-def rating_up(message):
-    chat_id = message.chat.id
-    user_id = message.from_user.id
+@bot.callback_query_handler(lambda query: json.loads(query.data)['ident'] == 'down')
+def rating_down(query):
+    user_id = query.from_user.id
+    db_file_id = json.loads(query.data)['id']
     cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id, user_id, mark FROM marks " \
-                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+    cursor.execute("SELECT file_id FROM resources \
+                WHERE id={}".format(db_file_id))
+    rows = cursor.fetchall()
+    file_id = rows[0][0]
+    cursor.close()
+    
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT file_id, user_id, mark FROM marks \
+                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
     rows = cursor.fetchall()
     cursor.close()
     if (len(rows)):
         if (str(rows[0][2]) == '-1'):
             cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=0 " \
-                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.execute("UPDATE marks SET mark=0 \
+                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
             cursor.close()
         else:
             cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=-1 " \
-                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.execute("UPDATE marks SET mark=-1 \
+                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
             cursor.close()
     else:
         cursor = db_conn.cursor()
-        cursor.execute("INSERT INTO marks (file_id, user_id, mark) " \
-                "VALUES ('{}', '{}'. '{}')".format(file_id, user_id, -1))
-        cursor.close()        
+        cursor.execute("INSERT INTO marks (file_id, user_id, mark) \
+                VALUES ('{}', {}, {})".format(file_id, str(user_id), '-1'))
+        cursor.close()
+    db_conn.commit()
     
 
 @bot.message_handler(commands=['upload'])
