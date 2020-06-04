@@ -5,12 +5,14 @@ import redis
 import utils
 import requests
 from check_correct import *
+from telebot import types
 
 db_conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require')
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
+TOKEN = os.getenv('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(
-    os.getenv('TELEGRAM_TOKEN'),
+    TOKEN,
 #    next_step_backend=utils.RedisHandlerBackend(redis_conn)
 )
 
@@ -101,8 +103,14 @@ def check_query(message):
             for note in notes:
                 message_success = 'Материал: ' + note[0] + '\nКурс: ' + str(note[1]) + '\nПредмет: ' + \
                         subjects[int(note[2]) - 1].capitalize() + '\nФайл: '
-                bot.send_message(chat_id, message_success)
-                bot.send_document(chat_id, note[3])
+                file_info = bot.get_file(note[3])
+                file = 'https://api.telegram.org/file/bot{0}/{1}'.format(TOKEN, file_info.file_path)
+                markup = types.InlineKeyboardMarkup()
+                btn_download = types.InlineKeyboardButton(text = 'Скачать', url = file)
+                btn_up = types.InlineKeyboardButton(text="+1", callback_data="up")
+                btn_down = types.InlineKeyboardButton(text="-1", callback_data="down")
+                markup.add(btn_down, btn_download, btn_up)
+                bot.send_message(chat_id, message_success, reply_markup = markup)
         cursor.close()
 
 
