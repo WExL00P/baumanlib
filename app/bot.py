@@ -107,7 +107,8 @@ def check_query(message):
                 file_info = bot.get_file(note[4])
                 file = 'https://api.telegram.org/file/bot{0}/{1}'.format(TOKEN, file_info.file_path)
                 markup = types.InlineKeyboardMarkup()
-                btn_download = types.InlineKeyboardButton(text = 'Скачать', url = file)
+                d_file = json.dumps({'ident': 'download', 'id': note[0]})
+                btn_download = types.InlineKeyboardButton(text = 'Скачать', callback_data = d_file)
                 up_data = json.dumps({'ident': 'up', 'id': note[0]})
                 btn_up = types.InlineKeyboardButton(text = "+1", callback_data = up_data)
                 down_data = json.dumps({'ident': 'down', 'id': note[0]})
@@ -211,6 +212,19 @@ def rating_down(query):
                 WHERE file_id='{}'".format(file_id))
         cursor.close()
     db_conn.commit()
+    
+
+@bot.callback_query_handler(lambda query: json.loads(query.data)['ident'] == 'download')
+def download_file(query):
+    user_id = query.from_user.id
+    db_file_id = json.loads(query.data)['id']
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT file_id FROM resources \
+                WHERE id={}".format(db_file_id))
+    rows = cursor.fetchall()
+    file_id = rows[0][0]
+    cursor.close()
+    bot.send_document(user_id, file_id)
     
 
 @bot.message_handler(commands=['upload'])
