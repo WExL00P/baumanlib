@@ -73,18 +73,18 @@ def handle_search(message):
 def check_query(message):
     count = 0
     notes = []
-    text = message.text.upper()
     chat_id = message.chat.id
     if message.text in commands_list:
         handle_cancel(message, 'поиска')
         call(message)
-    elif str(message.text)[0] == '/':
+    elif str(message.text)[0] == '/' or message.content_type != 'text':
         message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
                 'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, check_query)
     else:
+        text = message.text.upper()
         cursor = db_conn.cursor()
         cursor.execute("SELECT id, title, course, discipline, file_id , rating FROM resources")
         rows = cursor.fetchall()
