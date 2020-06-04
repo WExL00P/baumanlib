@@ -102,7 +102,7 @@ def check_query(message):
         else:
             notes.sort(key = lambda x: x[5])
             for note in notes:
-                message_success = 'Материал: ' + note[1] + '\nКурс: ' + str(note[2]) + '\nПредмет: ' + \
+                message_success = 'Описание: ' + note[1] + '\nКурс: ' + str(note[2]) + '\nПредмет: ' + \
                         subjects[int(note[3])].capitalize() + '\nРейтинг: ' + str(note[5])
                 file_info = bot.get_file(note[4])
                 file = 'https://api.telegram.org/file/bot{0}/{1}'.format(TOKEN, file_info.file_path)
