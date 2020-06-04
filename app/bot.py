@@ -438,11 +438,12 @@ def check_email(message):
 
 @bot.message_handler(commands=['cancel'])
 def handle_cancel(message, mode=None):
+    hideboard = types.ReplyKeyboardRemove()
     chat_id = message.chat.id
     if mode:
         about_cancel_msg = 'Выход из режима ' + mode
 
-        bot.send_message(chat_id, about_cancel_msg)
+        bot.send_message(chat_id, about_cancel_msg, reply_markup = hideboard)
 
 
 @bot.message_handler(commands=['about'])
