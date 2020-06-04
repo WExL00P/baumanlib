@@ -283,7 +283,21 @@ def check_course(message, options):
         options['course'] = message.text
         message_success = 'И, наконец, введи название предмета, которому соответствует твой материал'
 
-        instruction = bot.send_message(chat_id, message_success)
+        markup = types.ReplyKeyboardMarkup(one_time_keyboard = True)
+        btn_1 = types.KeyboardButton(subjects[0].capitalize())
+        btn_2 = types.KeyboardButton(subjects[1].capitalize())
+        btn_3 = types.KeyboardButton(subjects[2].capitalize())
+        btn_4 = types.KeyboardButton(subjects[3].capitalize())
+        btn_5 = types.KeyboardButton(subjects[4].capitalize())
+        btn_6 = types.KeyboardButton(subjects[5].capitalize())
+        btn_7 = types.KeyboardButton(subjects[6].capitalize())
+        btn_8 = types.KeyboardButton(subjects[7].capitalize())
+        markup.row(btn_1, btn_2)
+        markup.row(btn_3, btn_4)
+        markup.row(btn_5)
+        markup.row(btn_6, btn_7)
+        markup.row(btn_8)
+        instruction = bot.send_message(chat_id, message_success, reply_markup=markup)
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_subject(user_answer, options))
     else:
@@ -308,10 +322,11 @@ def check_subject(message, options):
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_subject(user_answer, options))
     elif message.content_type == 'text' and is_subject_correct(message):
-        options['subject'] = message.text
+        options['subject'] = subjects.index(message.text.upper())
+        hideboard = types.ReplyKeyboardRemove()
         message_success = 'Отлично! Теперь загрузи файл, а я добавлю его в свою библиотеку!'
 
-        instruction = bot.send_message(chat_id, message_success)
+        instruction = bot.send_message(chat_id, message_success, reply_markup = hideboard)
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_file(user_answer, options))
     else:
