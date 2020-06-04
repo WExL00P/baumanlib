@@ -141,6 +141,7 @@ def rating_up(query):
             cursor.execute("UPDATE resources SET rating=rating-1 \
                 WHERE file_id='{}'".format(file_id))
             cursor.close()
+            bot.answer_callback_query(callback_query_id=query.id, text='Голос отозван')
         else:
             cursor = db_conn.cursor()
             cursor.execute("UPDATE marks SET mark=1 \
@@ -148,9 +149,11 @@ def rating_up(query):
             if (str(rows[0][2]) == '0'):
                 cursor.execute("UPDATE resources SET rating=rating+1 \
                 WHERE file_id='{}'".format(file_id))
+                bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на 1')
             else:
                 cursor.execute("UPDATE resources SET rating=rating+2 \
                 WHERE file_id='{}'".format(file_id))
+                bot.answer_callback_query(callback_query_id=query.id, text='Рейтинг изменён на 1')
             cursor.close()
     else:
         cursor = db_conn.cursor()
@@ -185,6 +188,7 @@ def rating_down(query):
                 WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
             cursor.execute("UPDATE resources SET rating=rating+1 \
                 WHERE file_id='{}'".format(file_id))
+            bot.answer_callback_query(callback_query_id=query.id, text='Голос отозван')
             cursor.close()
         else:
             cursor = db_conn.cursor()
@@ -193,9 +197,11 @@ def rating_down(query):
             if (str(rows[0][2]) == '0'):
                 cursor.execute("UPDATE resources SET rating=rating-1 \
                 WHERE file_id='{}'".format(file_id))
+                bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на -1')
             else:
                 cursor.execute("UPDATE resources SET rating=rating-2 \
                 WHERE file_id='{}'".format(file_id))
+                bot.answer_callback_query(callback_query_id=query.id, text='Рейтинг изменён на -1')
             cursor.close()
     else:
         cursor = db_conn.cursor()
