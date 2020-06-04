@@ -18,7 +18,7 @@ else:
             content = self.rfile.read(content_length).decode('utf-8')
 
             update = telebot.types.Update.de_json(content)
-            bot.process_new_messages([update.message])
+            bot.process_new_updates([update])
 
     bot.set_webhook(os.getenv('APP_URL'))
     server_address = ('0.0.0.0', int(os.getenv('PORT') or 5000))
