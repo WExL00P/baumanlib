@@ -138,16 +138,26 @@ def rating_up(query):
             cursor = db_conn.cursor()
             cursor.execute("UPDATE marks SET mark=0 \
                 WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
+            cursor.execute("UPDATE resources SET rating=rating-1 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
             cursor.close()
         else:
             cursor = db_conn.cursor()
             cursor.execute("UPDATE marks SET mark=1 \
                 WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
+            if (str(rows[0][2]) == '0'):
+                cursor.execute("UPDATE resources SET rating=rating+1 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
+            else:
+                cursor.execute("UPDATE resources SET rating=rating+2 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
             cursor.close()
     else:
         cursor = db_conn.cursor()
         cursor.execute("INSERT INTO marks (file_id, user_id, mark) \
                 VALUES ('{}', {}, {})".format(file_id, str(user_id), '1'))
+        cursor.execute("UPDATE resources SET rating=rating+1 \
+            WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
         cursor.close()
     db_conn.commit()
 
@@ -173,16 +183,26 @@ def rating_down(query):
             cursor = db_conn.cursor()
             cursor.execute("UPDATE marks SET mark=0 \
                 WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
+            cursor.execute("UPDATE resources SET rating=rating+1 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
             cursor.close()
         else:
             cursor = db_conn.cursor()
             cursor.execute("UPDATE marks SET mark=-1 \
                 WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
+            if (str(rows[0][2]) == '0'):
+                cursor.execute("UPDATE resources SET rating=rating-1 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
+            else:
+                cursor.execute("UPDATE resources SET rating=rating-2 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
             cursor.close()
     else:
         cursor = db_conn.cursor()
         cursor.execute("INSERT INTO marks (file_id, user_id, mark) \
                 VALUES ('{}', {}, {})".format(file_id, str(user_id), '-1'))
+        cursor.execute("UPDATE resources SET rating=rating-1 \
+                WHERE file_id='{}' AND author_id={}".format(file_id, str(user_id)))
         cursor.close()
     db_conn.commit()
     
