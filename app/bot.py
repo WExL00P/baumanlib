@@ -210,7 +210,7 @@ def rating_down(query):
 @bot.message_handler(commands=['upload'])
 def handle_upload(message):
     chat_id = message.chat.id
-    if check_verification():
+    if check_verification(message.from_user.id):
         options = {'material': None, 'course': None, 'subject': None, 'file': None}
         about_upload_msg = 'Введи название материала для загрузки 📤'
         instruction = bot.send_message(chat_id, about_upload_msg)
@@ -225,9 +225,13 @@ def handle_upload(message):
         bot.register_next_step_handler(instruction, check_name_surname)
 
 
-def check_verification():
-    return True
-
+def check_verification(user_id):
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT verified FROM users \
+                WHERE user_id={}".format(user_id))
+    rows = cursor.fetchall()
+    cursor.close()
+    return len(rows) and rows[0][0]
 
 def check_material(message, options):
     chat_id = message.chat.id
@@ -396,7 +400,7 @@ def check_email(message):
         instruction = bot.send_message(chat_id, message_failure)
         bot.register_next_step_handler(instruction, lambda user_answer: \
             check_email(user_answer, options))
-    elif is_email_correct:
+    elif is_email_correct(message):
         message_success = 'Супер! Чтобы подтвердить регистрацию, напиши ' \
                 'мне что-нибудь с этой почты на @bot.bot'
                 
