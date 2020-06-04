@@ -86,12 +86,12 @@ def check_query(message):
         bot.register_next_step_handler(instruction, check_query)
     else:
         cursor = db_conn.cursor()
-        cursor.execute("SELECT id, title, course, discipline, file_id FROM resources")
+        cursor.execute("SELECT id, title, course, discipline, file_id , rating FROM resources")
         rows = cursor.fetchall()
         for row in rows:
             if (row[1].upper().find(text) != -1 or str(row[2]).find(text) != -1 or \
                 subjects[int(row[3]) - 1].find(text) != -1):
-                note = (str(row[0]), row[1], int(row[2]), row[3], row[4])
+                note = (str(row[0]), row[1], int(row[2]), row[3], row[4], int(row[5]))
                 notes.append(note)
                 count += 1
         if count == 0:
@@ -100,10 +100,10 @@ def check_query(message):
                 'загрузи материал по теме!'
             bot.send_message(chat_id, message_failure)
         else:
-            notes.sort(key = lambda x: x[2])
+            notes.sort(key = lambda x: x[5])
             for note in notes:
                 message_success = 'Материал: ' + note[1] + '\nКурс: ' + str(note[2]) + '\nПредмет: ' + \
-                        subjects[int(note[3]) - 1].capitalize() + '\nФайл: '
+                        subjects[int(note[3]) - 1].capitalize() + '\nРейтинг: ' + str(note[5])
                 file_info = bot.get_file(note[4])
                 file = 'https://api.telegram.org/file/bot{0}/{1}'.format(TOKEN, file_info.file_path)
                 markup = types.InlineKeyboardMarkup()
