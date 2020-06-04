@@ -85,7 +85,7 @@ def check_query(message):
         bot.register_next_step_handler(instruction, check_query)
     else:
         cursor = db_conn.cursor()
-        cursor.execute("SELECT title, course, discipline, file_id from resources")
+        cursor.execute("SELECT title, course, discipline, file_id FROM resources")
         rows = cursor.fetchall()
         for row in rows:
             if (row[0].upper().find(text) != -1 or str(row[1]).find(text) != -1 or \
@@ -113,6 +113,60 @@ def check_query(message):
                 bot.send_message(chat_id, message_success, reply_markup = markup)
         cursor.close()
 
+
+@bot.inline_handler(lambda query: query.query == 'up')
+def rating_up(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT file_id, user_id, mark FROM marks " \
+                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+    rows = cursor.fetchall()
+    cursor.close()
+    if (len(rows)):
+        if (str(rows[0][2]) == '1'):
+            cursor = db_conn.cursor()
+            cursor.execute("UPDATE marks SET mark=0 " \
+                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.close()
+        else:
+            cursor = db_conn.cursor()
+            cursor.execute("UPDATE marks SET mark=1 " \
+                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.close()
+    else:
+        cursor = db_conn.cursor()
+        cursor.execute("INSERT INTO marks (file_id, user_id, mark) " \
+                "VALUES ('{}', '{}'. '{}')".format(file_id, user_id, 1))
+        cursor.close()
+
+
+@bot.inline_handler(lambda query: query.query == 'down')
+def rating_up(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT file_id, user_id, mark FROM marks " \
+                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+    rows = cursor.fetchall()
+    cursor.close()
+    if (len(rows)):
+        if (str(rows[0][2]) == '-1'):
+            cursor = db_conn.cursor()
+            cursor.execute("UPDATE marks SET mark=0 " \
+                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.close()
+        else:
+            cursor = db_conn.cursor()
+            cursor.execute("UPDATE marks SET mark=-1 " \
+                "WHERE file_id='{}' AND user_id='{}'".format(file_id, user_id))
+            cursor.close()
+    else:
+        cursor = db_conn.cursor()
+        cursor.execute("INSERT INTO marks (file_id, user_id, mark) " \
+                "VALUES ('{}', '{}'. '{}')".format(file_id, user_id, -1))
+        cursor.close()        
+    
 
 @bot.message_handler(commands=['upload'])
 def handle_upload(message):
@@ -319,7 +373,7 @@ def handle_about(message):
     bot.send_message(chat_id, about_author_msg)
 
 
-@bot.message_handler(content_types=['text'])
+@bot.message_handler()
 def handle_unknown(message):
     chat_id = message.chat.id
     about_unknown_msg = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
