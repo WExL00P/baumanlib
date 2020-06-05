@@ -92,7 +92,7 @@ def check_query(message):
     for r in resources:
         subject = SUBJECTS[r.discipline].capitalize()
         result = f'<b>{r.title}</b>\n\n' \
-                 f'🏷️ {subject}\n' \
+                 f'{subject}\n' \
                  f'🎓 {r.course} курс\n' \
                  f'📊 Рейтинг: {r.rating}'
 
