@@ -7,7 +7,7 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup, \
     ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from message_templates import *
 from db import session, Resource, Mark, User
-from utils import send_email
+from utils import send_email, remove_emoji
 from xml.sax.saxutils import escape
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
@@ -234,7 +234,7 @@ def check_course(message):
 
     markup = ReplyKeyboardMarkup(one_time_keyboard=True)
     for subject in SUBJECTS:
-        markup.row(KeyboardButton(subject.capitalize()))
+        markup.row(KeyboardButton(subject))
 
     instruction = bot.send_message(chat_id, UPLOAD_SUBJECT_MSG,
                                    reply_markup=markup)
@@ -255,7 +255,15 @@ def check_subject(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
-    uploading_material.discipline = SUBJECTS.index(message.text.upper())
+    message.text = remove_emoji(message.text).upper().strip()
+
+    discipline_i = -1
+    for i, subject in enumerate(SUBJECTS):
+        subject = remove_emoji(subject).upper().strip()
+        if subject == message.text:
+            discipline_i = i
+
+    uploading_material.discipline = discipline_i
 
     instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
                                    reply_markup=ReplyKeyboardRemove())
