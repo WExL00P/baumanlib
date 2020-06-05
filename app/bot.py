@@ -8,6 +8,7 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup, \
 from message_templates import *
 from db import session, Resource, Mark, User
 from utils import send_email
+from xml.sax.saxutils import escape
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
@@ -90,14 +91,13 @@ def check_query(message):
 
     for r in resources:
         subject = SUBJECTS[r.discipline].capitalize()
-        result = f'*{r.title}*\n\n' \
+        result = f'<b>{r.title}</b>\n\n' \
                  f'🏷️ {subject}\n' \
                  f'🎓 {r.course} курс\n' \
                  f'📊 Рейтинг: {r.rating}'
 
         markup = generate_result_markup(r.id)
-        bot.send_message(chat_id, result, reply_markup=markup,
-                         parse_mode='Markdown')
+        bot.send_message(chat_id, result, reply_markup=markup, parse_mode='html')
 
 
 @bot.callback_query_handler(
@@ -140,7 +140,6 @@ def change_rating(query):
     else:
         mark = Mark(file_id=resource.file_id, user_id=user_id, mark=rating)
         session.add(mark)
-        session.flush()
 
         resource.rating += rating
         msg = f'Материал оценён на {rating}'
@@ -205,6 +204,8 @@ def check_material(message):
     if message.content_type != 'text' or not is_title_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_material)
+
+    message.text = escape(message.text)
 
     global uploading_material
     uploading_material = Resource(title=message.text, author_id=author_id)
@@ -273,7 +274,7 @@ def check_file(message):
     uploading_material.rating = 0
 
     session.add(uploading_material)
-    session.flush()
+    session.commit()
 
     bot.send_message(chat_id, UPLOAD_SUCCESS_MSG)
 
@@ -292,6 +293,8 @@ def check_name_surname(message):
     if not is_name_surname_correct(message) or message.content_type != 'text':
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
+
+    message.text = escape(message.text)
 
     global registering_user
     registering_user = User(user_id=user_id, name=message.text)
@@ -342,7 +345,6 @@ def check_code(message):
     registering_user.verified = True
 
     session.add(registering_user)
-    session.flush()
     session.commit()
 
     bot.send_message(chat_id, REG_SUCCESS_MSG)
