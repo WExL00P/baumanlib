@@ -1,0 +1,9 @@
+[run]
+branch = True
+omit = 
+    app/tests/**
+    app/utils.py
+    app/message_templates.py
+    app/config.py
+    app/main.py
+    app/db.py
