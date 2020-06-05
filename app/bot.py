@@ -78,8 +78,8 @@ def check_query(message):
         return bot.register_next_step_handler(instruction, check_query)
 
     query = f'%{message.text}%'
-    resources = session.query(Resource)\
-        .filter(Resource.title.ilike(query))\
+    resources = session.query(Resource) \
+        .filter(Resource.title.ilike(query)) \
         .order_by(Resource.rating.asc())
 
     if resources.count() == 0:
@@ -87,13 +87,14 @@ def check_query(message):
 
     for r in resources:
         subject = SUBJECTS[r.discipline].capitalize()
-        result = f'Описание: {r.title}\n' \
-                 f'Курс: {r.course}\n' \
-                 f'Предмет: {subject}\n' \
-                 f'Рейтинг: {r.rating}'
+        result = f'*{r.title}*\n\n' \
+                 f'🏷️ {subject}\n' \
+                 f'🎓 {r.course} курс\n' \
+                 f'📊 Рейтинг: {r.rating}'
 
         markup = generate_result_markup(r.id)
-        bot.send_message(chat_id, result, reply_markup=markup)
+        bot.send_message(chat_id, result, reply_markup=markup,
+                         parse_mode='Markdown')
 
 
 @bot.callback_query_handler(
