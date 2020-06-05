@@ -1,23 +1,23 @@
 import os
 import telebot
-import psycopg2
 import redis
-import utils
-import requests
 import json
 from check_correct import *
-from telebot import types
+from telebot.types import *
+from message_templates import *
+from db import session, Resource, Mark, User
 
-db_conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require')
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(
     TOKEN,
-#    next_step_backend=utils.RedisHandlerBackend(redis_conn)
+    #  next_step_backend=utils.RedisHandlerBackend(redis_conn)
 )
 
-commands_list = ['/start', '/help', '/search', '/about', '/upload', '/cancel']
+
+uploading_material = None
+
 
 def call(message):
     if message.text == '/start':
@@ -35,429 +35,285 @@ def call(message):
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     chat_id = message.chat.id
-    about_start_msg = 'Привет! Этот бот - база данных по специальности с ' \
-                'удобным поиском и рейтингом. Мудл на максималках!\n\n' \
-                'Вы можете:\n\n' \
-                '📤 Загружать различные учебные материалы\n' \
-                '🔍 Искать уже загруженные материалы по ключевым словам, темам\n' \
-                '📈 Оценивать загруженные материалы, давая другим ' \
-                'возможность находить достойные материалы быстрее'
-    
-    bot.send_message(chat_id, about_start_msg)
+    bot.send_message(chat_id, START_MSG)
 
 
 @bot.message_handler(commands=['help'])
 def handle_help(message):
     chat_id = message.chat.id
-    about_help_msg = 'Хэй! Смотри, вот полный список моих команд:\n\n' \
-                '📌 /start - прочти ещё разок небольшую справку обо мне!\n' \
-                '📌 /search - найди нужный материал в моей библиотеке!\n' \
-                '📌 /upload - загрузи свои материалы, чтобы они были доступны другим!\n' \
-                '📌 /about - узнай чуть больше о создателях проекта или оставь отзыв/предложение!\n' \
-                '📌 /cancel - передумал? останови процесс поиска/загрузки материалов!\n' \
-                '📌 /help - посмотри подробную подсказку по командам, если вдруг что-нибудь забудешь:^)'
-
-    bot.send_message(chat_id, about_help_msg)
+    bot.send_message(chat_id, HELP_MSG)
 
 
 @bot.message_handler(commands=['search'])
 def handle_search(message):
     chat_id = message.chat.id
-    about_search_msg = 'Введи поисковый запрос, а я постараюсь тебе помочь!🔍\n\n' \
-                'Для выхода из режима поиска введи /cancel'
-
-    instruction = bot.send_message(chat_id, about_search_msg)
+    instruction = bot.send_message(chat_id, SEARCH_MSG)
     bot.register_next_step_handler(instruction, check_query)
 
 
+def generate_result_markup(material_id):
+    markup = InlineKeyboardMarkup()
+
+    dwn_data = json.dumps({'action': 'download', 'id': material_id})
+    btn_download = InlineKeyboardButton(text='Скачать', callback_data=dwn_data)
+
+    up_data = json.dumps({'action': 'up', 'id': material_id, 'value': 1})
+    btn_up = InlineKeyboardButton(text='+1', callback_data=up_data)
+
+    down_data = json.dumps({'action': 'down', 'id': material_id, 'value': -1})
+    btn_down = InlineKeyboardButton(text='-1', callback_data=down_data)
+
+    markup.add(btn_down, btn_download, btn_up)
+    return markup
+
+
 def check_query(message):
-    count = 0
-    notes = []
     chat_id = message.chat.id
-    if message.text in commands_list:
-        handle_cancel(message, 'поиска')
-        call(message)
-    elif str(message.text)[0] == '/' or message.content_type != 'text':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, check_query)
-    else:
-        text = message.text.upper()
-        cursor = db_conn.cursor()
-        cursor.execute("SELECT id, title, course, discipline, file_id , rating FROM resources")
-        rows = cursor.fetchall()
-        for row in rows:
-            if (row[1].upper().find(text) != -1 or str(row[2]).find(text) != -1 or \
-                subjects[int(row[3])].find(text) != -1):
-                note = (str(row[0]), row[1], int(row[2]), row[3], row[4], int(row[5]))
-                notes.append(note)
-                count += 1
-        if count == 0:
-            message_failure = 'Упс, похоже, материалов по твоему запросу ещё нет в ' \
-                'моей библиотеке:( Попробуй переформулировать его или первым ' \
-                'загрузи материал по теме!'
-            bot.send_message(chat_id, message_failure)
-        else:
-            notes.sort(key = lambda x: x[5])
-            for note in notes:
-                message_success = 'Описание: ' + note[1] + '\nКурс: ' + str(note[2]) + '\nПредмет: ' + \
-                        subjects[int(note[3])].capitalize() + '\nРейтинг: ' + str(note[5])
-                file_info = bot.get_file(note[4])
-                file = 'https://api.telegram.org/file/bot{0}/{1}'.format(TOKEN, file_info.file_path)
-                markup = types.InlineKeyboardMarkup()
-                d_file = json.dumps({'ident': 'download', 'id': note[0]})
-                btn_download = types.InlineKeyboardButton(text = 'Скачать', callback_data = d_file)
-                up_data = json.dumps({'ident': 'up', 'id': note[0]})
-                btn_up = types.InlineKeyboardButton(text = "+1", callback_data = up_data)
-                down_data = json.dumps({'ident': 'down', 'id': note[0]})
-                btn_down = types.InlineKeyboardButton(text = "-1", callback_data = down_data)
-                markup.add(btn_down, btn_download, btn_up)
-                bot.send_message(chat_id, message_success, reply_markup = markup)
-        cursor.close()
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'поиска')
 
-    
-@bot.callback_query_handler(lambda query: json.loads(query.data)['ident'] == 'up')
-def rating_up(query):
+    if message.text.startswith('/') or message.content_type != 'text':
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_query)
+
+    query = f'%{message.text}%'
+    resources = session.query(Resource)\
+        .filter(Resource.title.ilike(query))\
+        .order_by(Resource.rating.asc())
+
+    if resources.count() == 0:
+        return bot.send_message(chat_id, NO_RESULTS_MSG)
+
+    for r in resources:
+        subject = SUBJECTS[r.discipline].capitalize()
+        result = f'Описание: {r.title}\n' \
+                 f'Курс: {r.course}\n' \
+                 f'Предмет: {subject}\n' \
+                 f'Рейтинг: {r.rating}'
+
+        markup = generate_result_markup(r.id)
+        bot.send_message(chat_id, result, reply_markup=markup)
+
+
+@bot.callback_query_handler(
+    lambda query: json.loads(query.data)['action'] in ['up', 'down'])
+def change_rating(query):
+    query_json = json.loads(query.data)
+
     user_id = query.from_user.id
-    db_file_id = json.loads(query.data)['id']
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id FROM resources \
-                WHERE id={}".format(db_file_id))
-    rows = cursor.fetchall()
-    file_id = rows[0][0]
-    cursor.close()
-    
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id, user_id, mark FROM marks \
-                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
-    rows = cursor.fetchall()
-    cursor.close()
-    if (len(rows)):
-        if (str(rows[0][2]) == '1'):
-            cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=0 \
-                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
-            cursor.execute("UPDATE resources SET rating=rating-1 \
-                WHERE file_id='{}'".format(file_id))
-            cursor.close()
-            bot.answer_callback_query(callback_query_id=query.id, text='Голос отозван')
+    file_id = query_json['id']
+    rating = query_json['value']
+
+    resource = session.query(Resource) \
+        .filter(Resource.id == file_id)
+
+    if resource.count() == 0:
+        return
+
+    resource = resource.one()
+
+    mark_row = session.query(Mark) \
+        .filter(Mark.file_id == resource.file_id) \
+        .filter(Mark.user_id == user_id)
+
+    if mark_row.count() != 0:
+        mark_row = mark_row.one()
+
+        if mark_row.mark == rating:
+            mark_row.mark = 0
+            resource.rating -= rating
+            msg = 'Голос отозван'
         else:
-            cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=1 \
-                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
-            if (str(rows[0][2]) == '0'):
-                cursor.execute("UPDATE resources SET rating=rating+1 \
-                WHERE file_id='{}'".format(file_id))
-                bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на 1')
+            if mark_row.mark == 0:
+                resource.rating += rating
+                msg = f'Материал оценён на {rating}'
             else:
-                cursor.execute("UPDATE resources SET rating=rating+2 \
-                WHERE file_id='{}'".format(file_id))
-                bot.answer_callback_query(callback_query_id=query.id, text='Рейтинг изменён на 1')
-            cursor.close()
+                resource.rating += 2 * rating
+                msg = f'Рейтинг изменён на {rating}'
+
+            mark_row.mark = rating
     else:
-        cursor = db_conn.cursor()
-        cursor.execute("INSERT INTO marks (file_id, user_id, mark) \
-                VALUES ('{}', {}, {})".format(file_id, str(user_id), '1'))
-        cursor.execute("UPDATE resources SET rating=rating+1 \
-            WHERE file_id='{}'".format(file_id))
-        cursor.close()
-        bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на 1')
-    db_conn.commit()
+        mark = Mark(file_id=resource.file_id, user_id=user_id, mark=rating)
+        session.add(mark)
+        session.flush()
+
+        resource.rating += rating
+        msg = f'Материал оценён на {rating}'
+
+    bot.answer_callback_query(callback_query_id=query.id, text=msg)
+    session.commit()
 
 
-@bot.callback_query_handler(lambda query: json.loads(query.data)['ident'] == 'down')
-def rating_down(query):
-    user_id = query.from_user.id
-    db_file_id = json.loads(query.data)['id']
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id FROM resources \
-                WHERE id={}".format(db_file_id))
-    rows = cursor.fetchall()
-    file_id = rows[0][0]
-    cursor.close()
-    
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id, user_id, mark FROM marks \
-                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
-    rows = cursor.fetchall()
-    cursor.close()
-    if (len(rows)):
-        if (str(rows[0][2]) == '-1'):
-            cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=0 \
-                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
-            cursor.execute("UPDATE resources SET rating=rating+1 \
-                WHERE file_id='{}'".format(file_id))
-            bot.answer_callback_query(callback_query_id=query.id, text='Голос отозван')
-            cursor.close()
-        else:
-            cursor = db_conn.cursor()
-            cursor.execute("UPDATE marks SET mark=-1 \
-                WHERE file_id='{}' AND user_id={}".format(file_id, str(user_id)))
-            if (str(rows[0][2]) == '0'):
-                cursor.execute("UPDATE resources SET rating=rating-1 \
-                WHERE file_id='{}'".format(file_id))
-                bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на -1')
-            else:
-                cursor.execute("UPDATE resources SET rating=rating-2 \
-                WHERE file_id='{}'".format(file_id))
-                bot.answer_callback_query(callback_query_id=query.id, text='Рейтинг изменён на -1')
-            cursor.close()
-    else:
-        cursor = db_conn.cursor()
-        cursor.execute("INSERT INTO marks (file_id, user_id, mark) \
-                VALUES ('{}', {}, {})".format(file_id, str(user_id), '-1'))
-        cursor.execute("UPDATE resources SET rating=rating-1 \
-                WHERE file_id='{}'".format(file_id))
-        cursor.close()
-        bot.answer_callback_query(callback_query_id=query.id, text='Материал оценён на -1')
-    db_conn.commit()
-    
-
-@bot.callback_query_handler(lambda query: json.loads(query.data)['ident'] == 'download')
+@bot.callback_query_handler(
+    lambda query: json.loads(query.data)['action'] == 'download')
 def download_file(query):
     user_id = query.from_user.id
     db_file_id = json.loads(query.data)['id']
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT file_id FROM resources \
-                WHERE id={}".format(db_file_id))
-    rows = cursor.fetchall()
-    file_id = rows[0][0]
-    cursor.close()
+
+    file_id = session.query(Resource.file_id) \
+        .filter(Resource.id == db_file_id) \
+        .scalar()
+
     bot.send_document(user_id, file_id)
-    
+
 
 @bot.message_handler(commands=['upload'])
 def handle_upload(message):
     chat_id = message.chat.id
-    if check_verification(message.from_user.id):
-        options = {'material': None, 'course': None, 'subject': None, 'file': None}
-        about_upload_msg = 'Введи название материала для загрузки 📤'
-        instruction = bot.send_message(chat_id, about_upload_msg)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_material(user_answer, options))
-    else:
-        about_upload_msg = 'Загружать материалы могут только зарегистрированные ' \
-                'пользователи!\nВведи своё имя и фамилию, пожалуйста!\n\nДля выхода ' \
-                'из режима регистрации введи /cancel'
-    
-        instruction = bot.send_message(chat_id, about_upload_msg)
-        bot.register_next_step_handler(instruction, check_name_surname)
+
+    if not check_verification(message.from_user.id):
+        instruction = bot.send_message(chat_id, NEEDS_REG_MSG)
+        return bot.register_next_step_handler(instruction, check_name_surname)
+
+    instruction = bot.send_message(chat_id, UPLOAD_TITLE_MSG)
+    bot.register_next_step_handler(instruction, check_material)
 
 
 def check_verification(user_id):
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT verified FROM users \
-                WHERE user_id={}".format(user_id))
-    rows = cursor.fetchall()
-    cursor.close()
-    return len(rows) and rows[0][0]
+    verified = session.query(User.verified) \
+        .filter(User.user_id == user_id) \
+        .scalar()
 
-def check_material(message, options):
-    chat_id = message.chat.id
-    if message.text in commands_list:
-        handle_cancel(message, 'загрузки')
-        call(message)
-    elif str(message.text)[0] == '/':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_material(user_answer, options))
-    elif message.content_type == 'text' and is_material_correct(message):
-        options['material'] = message.text
-        message_success = 'Теперь укажи курс, к которому относится твой материал'
-
-        instruction = bot.send_message(chat_id, message_success)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_course(user_answer, options))
-    else:
-        message_failure = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_material(user_answer, options))
+    return verified
 
 
-def check_course(message, options):
-    chat_id = message.chat.id
-    if message.text in commands_list:
-        handle_cancel(message, 'загрузки')
-        call(message)
-    elif str(message.text)[0] == '/':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_course(user_answer, options))
-    elif message.content_type == 'text' and is_course_correct(message):
-        options['course'] = message.text
-        message_success = 'И, наконец, введи название предмета, которому соответствует твой материал'
-
-        markup = types.ReplyKeyboardMarkup(one_time_keyboard = True)
-        btn_1 = types.KeyboardButton(subjects[0].capitalize())
-        btn_2 = types.KeyboardButton(subjects[1].capitalize())
-        btn_3 = types.KeyboardButton(subjects[2].capitalize())
-        btn_4 = types.KeyboardButton(subjects[3].capitalize())
-        btn_5 = types.KeyboardButton(subjects[4].capitalize())
-        btn_6 = types.KeyboardButton(subjects[5].capitalize())
-        btn_7 = types.KeyboardButton(subjects[6].capitalize())
-        btn_8 = types.KeyboardButton(subjects[7].capitalize())
-        markup.row(btn_1, btn_2)
-        markup.row(btn_3, btn_4)
-        markup.row(btn_5)
-        markup.row(btn_6, btn_7)
-        markup.row(btn_8)
-        instruction = bot.send_message(chat_id, message_success, reply_markup=markup)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_subject(user_answer, options))
-    else:
-        message_failure = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_course(user_answer, options))
-
-
-def check_subject(message, options):
-    chat_id = message.chat.id
-    if message.text in commands_list:
-        handle_cancel(message, 'загрузки')
-        call(message)
-    elif str(message.text)[0] == '/':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_subject(user_answer, options))
-    elif message.content_type == 'text' and is_subject_correct(message):
-        options['subject'] = subjects.index(message.text.upper())
-        hideboard = types.ReplyKeyboardRemove()
-        message_success = 'Отлично! Теперь загрузи файл, а я добавлю его в свою библиотеку!'
-
-        instruction = bot.send_message(chat_id, message_success, reply_markup = hideboard)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_file(user_answer, options))
-    else:
-        message_failure = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
-
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_subject(user_answer, options))
-
-
-def check_file(message, options):
+def check_material(message):
     chat_id = message.chat.id
     author_id = message.from_user.id
-    if message.text in commands_list:
-        handle_cancel(message, 'загрузки')
-        call(message)
-    elif message.content_type == 'document' and is_file_correct(message):
-        file_id = message.document.file_id
-        options['file'] = message.document.file_name
-        cursor = db_conn.cursor()
-        
-        cursor.execute("INSERT INTO resources (title, author_id, course, \
-        discipline, rating, file_id) VALUES ('{}', {}, \
-        {}, '{}', {}, '{}')".format(options['material'], str(author_id), \
-        str(options['course']), options['subject'], '0', file_id))
 
-        cursor.close()
-        db_conn.commit()
-        message_success = 'Отлично! Ваш материал добавлен в базу.'
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'загрузки')
 
-        bot.send_message(chat_id, message_success)
-    else:
-        message_failure = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
+    if message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_material)
 
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_file(user_answer, options))
+    if message.content_type != 'text' or not is_material_correct(message):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_material)
+
+    global uploading_material
+    uploading_material = Resource(title=message.text, author_id=author_id)
+
+    instruction = bot.send_message(chat_id, UPLOAD_COURSE_MSG)
+    bot.register_next_step_handler(instruction, check_course)
+
+
+def check_course(message):
+    chat_id = message.chat.id
+
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'загрузки')
+
+    if message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_course)
+
+    if message.content_type != 'text' or not is_course_correct(message):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_course)
+
+    uploading_material.course = message.text
+
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True)
+    for subject in SUBJECTS:
+        markup.row(KeyboardButton(subject.capitalize()))
+
+    instruction = bot.send_message(chat_id, UPLOAD_SUBJECT_MSG,
+                                   reply_markup=markup)
+    bot.register_next_step_handler(instruction, check_subject)
+
+
+def check_subject(message):
+    chat_id = message.chat.id
+
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'загрузки')
+
+    if message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_subject)
+
+    if message.content_type != 'text' or not is_subject_correct(message):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_subject)
+
+    uploading_material.discipline = SUBJECTS.index(message.text.upper())
+
+    instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
+                                   reply_markup=ReplyKeyboardRemove())
+    bot.register_next_step_handler(instruction, check_file)
+
+
+def check_file(message):
+    chat_id = message.chat.id
+
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'загрузки')
+
+    if message.content_type != 'document' or not is_file_correct(message):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_file)
+
+    uploading_material.file_id = message.document.file_id
+    uploading_material.rating = 0
+
+    session.add(uploading_material)
+    session.flush()
+
+    bot.send_message(chat_id, UPLOAD_SUCCESS_MSG)
 
 
 def check_name_surname(message):
     chat_id = message.chat.id
-    if message.text in commands_list:
-        handle_cancel(message, 'регистрации')
-        call(message)
-    elif str(message.text)[0] == '/':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_name_surname(user_answer, options))
-    elif is_name_surname_correct(message):
-        message_success = 'Отлично! Теперь укажи адрес своей почты в домене bmstu.ru'
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'регистрации')
 
-        instruction = bot.send_message(chat_id, message_success)
-        bot.register_next_step_handler(instruction, check_email)
-    else:
-        message_failure = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
+    if message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_name_surname)
 
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_name_surname(user_answer, options))
+    if not is_name_surname_correct(message):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_name_surname)
+
+    instruction = bot.send_message(chat_id, REG_MAIL_MSG)
+    bot.register_next_step_handler(instruction, check_email)
 
 
 def check_email(message):
     chat_id = message.chat.id
-    if message.text in commands_list:
-        handle_cancel(message, 'регистрации')
-        call(message)
-    elif str(message.text)[0] == '/':
-        message_failure = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
 
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_email(user_answer, options))
-    elif is_email_correct(message):
-        message_success = 'Супер! Чтобы подтвердить регистрацию, напиши ' \
-                'мне что-нибудь с этой почты на @bot.bot'
-                
-        bot.send_message(chat_id, message_success)
-    else:
-        message_failure = 'Упс! Кажется, ты ввёл некорректные данные. ' \
-                'попробуй ещё разок, пожалуйста'
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'регистрации')
 
-        instruction = bot.send_message(chat_id, message_failure)
-        bot.register_next_step_handler(instruction, lambda user_answer: \
-            check_email(user_answer, options))
+    if message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_email)
+
+    if not is_email_correct(message):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_email)
+
+    bot.send_message(chat_id, REG_CODE_MSG)
 
 
 @bot.message_handler(commands=['cancel'])
 def handle_cancel(message, mode=None):
-    hideboard = types.ReplyKeyboardRemove()
     chat_id = message.chat.id
-    if mode:
-        about_cancel_msg = 'Выход из режима ' + mode
 
-        bot.send_message(chat_id, about_cancel_msg, reply_markup = hideboard)
+    if mode:
+        no_keyboard = ReplyKeyboardRemove()
+        about_cancel_msg = f'Выход из режима {mode}'
+
+        bot.send_message(chat_id, about_cancel_msg, reply_markup=no_keyboard)
+
+    call(message)
 
 
 @bot.message_handler(commands=['about'])
 def handle_about(message):
     chat_id = message.chat.id
-    about_author_msg = 'Авторы супер'
-
-    bot.send_message(chat_id, about_author_msg)
-
-
-@bot.message_handler()
-def handle_unknown(message):
-    chat_id = message.chat.id
-    about_unknown_msg = 'Прости, дружок, я тебя не понимаю:(\nИспользуй всплывающие ' \
-                'подсказки или /help, если позабыл, какие команды тебе доступны!'
-
-    bot.send_message(chat_id, about_unknown_msg)
+    bot.send_message(chat_id, ABOUT_MSG)

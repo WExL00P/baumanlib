@@ -1,56 +1,87 @@
-import telebot
-
-subjects = ["ПРОГРАММИРОВАНИЕ", "ОСНОВЫ ПРОГРАММНОЙ ИНЖЕНЕРИИ", "ИНОСТРАННЫЙ ЯЗЫК", \
-            "ИСТОРИЯ", "ЭЛЕКТИВНЫЙ КУРС ПО ФИЗИЧЕСКОЙ КУЛЬТУРЕ И СПОРТУ", \
-            "ФИЗИКА", "ЛИНЕЙНАЯ АЛГЕБРА И ФУНКЦИИ НЕСКОЛЬКИХ ПЕРЕМЕННЫХ", \
-            "ИНТЕГРАЛЫ И ДИФФЕРЕНЦИАЛЬНЫЕ УРАВНЕНИЯ"]
+from config import *
 
 
 def is_material_correct(message):
+    if not hasattr(message, 'text'):
+        return False
+
     text = message.text
-    return len(text) < 256 and text[0] != '/'
+
+    if len(text) >= MAX_TITLE_LENGTH:
+        return False
+
+    for c in text:
+        if c.isalpha():
+            return True
+
+    return False
 
 
 def is_course_correct(message):
-    text = message.text
-    if text.isdigit():
-        text = int(text)
-        return text >= 1 and text <= 6
-    else:
+    if not hasattr(message, 'text'):
         return False
+
+    text = message.text
+
+    if not text.isdigit():
+        return False
+
+    return COURSE_MIN <= int(text) <= COURSE_MAX
 
 
 def is_subject_correct(message):
-    text = message.text
-    return text.upper() in subjects
+    if not hasattr(message, 'text'):
+        return False
+
+    return message.text.upper() in SUBJECTS
 
 
 def is_file_correct(message):
+    if not hasattr(message, 'text'):
+        return False
+
     text = message.document.mime_type.split('/')
-    return len(text) == 2 and text[1] in ["docx", "doc", "pdf", "pptx"]
+    return len(text) == 2 and text[1] in ALLOWED_EXTENSIONS
 
 
 def is_name_surname_correct(message):
-    text = message.text.split()
-    if len(text) >= 2:
-        for i in text:
-            if len(i) <= 2:
-                return False
-    else:
+    if not hasattr(message, 'text'):
         return False
+
+    text = message.text.split()
+
+    if len(text) < 2:
+        return False
+
+    for c in text:
+        if len(c) <= 2:
+            return False
+
     return True
 
 
 def is_email_correct(message):
-    text = message.text
-    if "@" in text:
-        text = text.split('@')
-        if len(text) == 2 and text[1] in ["bmstu.ru", "student.bmstu.ru"]:
-            for i in text[1]:
-                if not (i.isdigit() or i.isalpha()):
-                    return False
-        else:
-            return False
-    else:
+    if not hasattr(message, 'text'):
         return False
+
+    email = message.text
+
+    if '@' not in email:
+        return False
+
+    username, domain = email.split('@')
+
+    if not username or not domain:
+        return False
+
+    if any(name in username for name in FORBIDDEN_USERNAMES):
+        return False
+
+    if domain not in ALLOWED_MAIL_DOMAINS:
+        return False
+
+    for c in username + domain:
+        if not (c.isdigit() or c.isalpha()):
+            return False
+
     return True
