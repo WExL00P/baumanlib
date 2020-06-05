@@ -2,6 +2,8 @@ import os
 import pickle
 import smtplib
 import telebot
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 
 def send_email(address, subject, body):
@@ -10,8 +12,12 @@ def send_email(address, subject, body):
         server.ehlo()
         server.starttls()
         server.login(os.getenv('EMAIL_ADDRESS'), os.getenv('EMAIL_PASSWORD'))
-        message = 'Subject: {}\n\n{}'.format(subject, body)
-        server.sendmail(os.getenv('EMAIL_ADDRESS'), address, message)
+
+        msg = MIMEMultipart()
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        server.sendmail(os.getenv('EMAIL_ADDRESS'), address, msg.as_string())
         server.quit()
     except:
         print("Email failed to send.")

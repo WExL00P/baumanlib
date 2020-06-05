@@ -3,9 +3,11 @@ import telebot
 import redis
 import json
 from check_correct import *
-from telebot.types import *
+from telebot.types import KeyboardButton, ReplyKeyboardMarkup, \
+    ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from message_templates import *
 from db import session, Resource, Mark, User
+from utils import send_email
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
@@ -17,6 +19,7 @@ bot = telebot.TeleBot(
 
 
 uploading_material = None
+registering_user = None
 
 
 def call(message):
@@ -163,8 +166,15 @@ def download_file(query):
 def handle_upload(message):
     chat_id = message.chat.id
 
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    name = f'{first_name} {last_name}'
+
     if not check_verification(message.from_user.id):
-        instruction = bot.send_message(chat_id, NEEDS_REG_MSG)
+        markup = ReplyKeyboardMarkup(one_time_keyboard=True)
+        markup.row(KeyboardButton(name))
+
+        instruction = bot.send_message(chat_id, NEEDS_REG_MSG, reply_markup=markup)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
     instruction = bot.send_message(chat_id, UPLOAD_TITLE_MSG)
@@ -268,6 +278,7 @@ def check_file(message):
 
 def check_name_surname(message):
     chat_id = message.chat.id
+    user_id = message.from_user.id
 
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
@@ -280,7 +291,11 @@ def check_name_surname(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
-    instruction = bot.send_message(chat_id, REG_MAIL_MSG)
+    global registering_user
+    registering_user = User(user_id=user_id, name=message.text)
+
+    instruction = bot.send_message(chat_id, REG_MAIL_MSG,
+                                   reply_markup=ReplyKeyboardRemove())
     bot.register_next_step_handler(instruction, check_email)
 
 
@@ -298,7 +313,37 @@ def check_email(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
-    bot.send_message(chat_id, REG_CODE_MSG)
+    registering_user.code = str(int.from_bytes(os.urandom(2), "little"))
+    registering_user.email = message.text
+
+    send_email(registering_user.email, "Регистрация в боте BaumanLib",
+               registering_user.code)
+
+    instruction = bot.send_message(chat_id, REG_CODE_MSG)
+    bot.register_next_step_handler(instruction, check_code)
+
+
+def check_code(message):
+    chat_id = message.chat.id
+
+    if message.text in COMMANDS:
+        return handle_cancel(message, 'регистрации')
+
+    if message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+        return bot.register_next_step_handler(instruction, check_code)
+
+    if message.content_type != 'text' or registering_user.code != message.text:
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        return bot.register_next_step_handler(instruction, check_code)
+
+    registering_user.verified = True
+
+    session.add(registering_user)
+    session.flush()
+    session.commit()
+
+    bot.send_message(chat_id, REG_SUCCESS_MSG)
 
 
 @bot.message_handler(commands=['cancel'])

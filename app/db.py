@@ -25,6 +25,8 @@ class User(base):
     user_id = Column(INT)
     verified = Column(BOOLEAN)
     code = Column(VARCHAR)
+    name = Column(VARCHAR)
+    email = Column(VARCHAR)
 
 
 class Mark(base):
