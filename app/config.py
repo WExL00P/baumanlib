@@ -13,8 +13,7 @@ SUBJECTS = [
 
 ALLOWED_EXTENSIONS = ['docx', 'doc', 'pdf', 'pptx']
 
-ALLOWED_MAIL_DOMAINS = ['student.bmstu.ru']
-FORBIDDEN_USERNAMES = ['group', 'all']
+ALLOWED_MAIL_DOMAINS = ['student.bmstu.ru', 'bmstu.ru']
 
 COURSE_MIN = 1
 COURSE_MAX = 6

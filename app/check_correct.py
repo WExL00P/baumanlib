@@ -1,4 +1,5 @@
 from config import *
+from email_validator import validate_email, EmailNotValidError
 
 
 def is_title_correct(message):
@@ -99,24 +100,9 @@ def is_email_correct(message):
     if not hasattr(message, 'text'):
         return False
 
-    email = message.text
-
-    if '@' not in email:
+    try:
+        valid = validate_email(message.text)
+    except EmailNotValidError:
         return False
 
-    username, domain = email.split('@')
-
-    if not username or not domain:
-        return False
-
-    if any(name in username for name in FORBIDDEN_USERNAMES):
-        return False
-
-    if domain not in ALLOWED_MAIL_DOMAINS:
-        return False
-
-    for c in username + domain:
-        if not (c.isdigit() or c.isalpha()):
-            return False
-
-    return True
+    return valid.ascii_domain in ALLOWED_MAIL_DOMAINS
