@@ -9,33 +9,33 @@ base = declarative_base()
 class Resource(base):
     __tablename__ = 'resources'
 
-    id = Column(INT, primary_key=True)
-    title = Column(VARCHAR)
-    author_id = Column(INT)
-    course = Column(INT)
-    discipline = Column(INT)
-    rating = Column(INT)
-    file_id = Column(VARCHAR)
+    id = Column(Integer, primary_key=True)
+    title = Column(String)
+    author_id = Column(Integer)
+    course = Column(Integer)
+    discipline = Column(Integer)
+    rating = Column(Integer)
+    file_id = Column(String)
 
 
 class User(base):
     __tablename__ = 'users'
 
-    id = Column(INT, primary_key=True)
-    user_id = Column(INT)
-    verified = Column(BOOLEAN)
-    code = Column(VARCHAR)
-    name = Column(VARCHAR)
-    email = Column(VARCHAR)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    verified = Column(Boolean)
+    code = Column(String)
+    name = Column(String)
+    email = Column(String)
 
 
 class Mark(base):
     __tablename__ = 'marks'
 
-    id = Column(INT, primary_key=True)
-    file_id = Column(VARCHAR)
-    user_id = Column(INT)
-    mark = Column(SMALLINT)
+    id = Column(Integer, primary_key=True)
+    file_id = Column(String)
+    user_id = Column(Integer)
+    mark = Column(SmallInteger)
 
 
 db = create_engine(os.getenv('DATABASE_URL'))
