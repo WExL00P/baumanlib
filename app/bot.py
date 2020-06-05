@@ -159,6 +159,7 @@ def download_file(query):
         .scalar()
 
     bot.send_document(user_id, file_id)
+    bot.answer_callback_query(callback_query_id=query.id)
 
 
 @bot.message_handler(commands=['upload'])
