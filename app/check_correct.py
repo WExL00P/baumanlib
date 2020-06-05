@@ -92,7 +92,7 @@ def is_name_surname_correct(message):
         return False
 
     for c in text:
-        if len(c) <= 2:
+        if len(c) < 2:
             return False
 
     return True
