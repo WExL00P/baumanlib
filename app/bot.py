@@ -287,7 +287,7 @@ def check_name_surname(message):
         instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
-    if not is_name_surname_correct(message):
+    if not is_name_surname_correct(message) or message.content_type != 'text':
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
@@ -309,7 +309,7 @@ def check_email(message):
         instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
-    if not is_email_correct(message):
+    if not is_email_correct(message) or message.content_type != 'text':
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
