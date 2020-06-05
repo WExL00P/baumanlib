@@ -190,7 +190,7 @@ def check_material(message):
         instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
         return bot.register_next_step_handler(instruction, check_material)
 
-    if message.content_type != 'text' or not is_material_correct(message):
+    if message.content_type != 'text' or not is_title_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_material)
 

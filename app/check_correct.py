@@ -1,7 +1,7 @@
 from config import *
 
 
-def is_material_correct(message):
+def is_title_correct(message):
     """
     Проверяет корректность введенного описания материала
     :param message: сообщение пользователя с описанием материала
