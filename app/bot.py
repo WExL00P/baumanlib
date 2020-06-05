@@ -158,6 +158,7 @@ def download_file(query):
         .filter(Resource.id == db_file_id) \
         .scalar()
 
+    bot.send_message(user_id, text=DOWNLOAD_SUCCESS_MSG)
     bot.send_document(user_id, file_id)
     bot.answer_callback_query(callback_query_id=query.id)
 
@@ -357,7 +358,7 @@ def handle_cancel(message, mode=None):
 
     if mode:
         no_keyboard = ReplyKeyboardRemove()
-        about_cancel_msg = f'Выход из режима {mode}'
+        about_cancel_msg = f'⛔️ Выход из режима {mode}'
 
         bot.send_message(chat_id, about_cancel_msg, reply_markup=no_keyboard)
 
@@ -367,7 +368,7 @@ def handle_cancel(message, mode=None):
 @bot.message_handler(commands=['about'])
 def handle_about(message):
     chat_id = message.chat.id
-    bot.send_message(chat_id, ABOUT_MSG)
+    bot.send_message(chat_id, ABOUT_MSG, parse_mode='html')
 
 
 @bot.message_handler(func=lambda message: True)
