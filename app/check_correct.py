@@ -1,5 +1,6 @@
 from config import *
 from email_validator import validate_email, EmailNotValidError
+from utils import remove_emoji
 
 
 def is_title_correct(message):
@@ -49,7 +50,14 @@ def is_subject_correct(message):
     if not hasattr(message, 'text'):
         return False
 
-    return message.text.upper() in SUBJECTS
+    message.text = remove_emoji(message.text).upper().strip()
+
+    for subject in SUBJECTS:
+        subject = remove_emoji(subject).upper().strip()
+        if subject == message.text:
+            return True
+
+    return False
 
 
 def is_file_correct(message):

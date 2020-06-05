@@ -1,6 +1,7 @@
 import os
 import pickle
 import smtplib
+import re
 import telebot
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -21,6 +22,17 @@ def send_email(address, subject, body):
         server.quit()
     except:
         print("Email failed to send.")
+
+
+def remove_emoji(string):
+    emoji_pattern = re.compile("["
+                               u"\U0001F600-\U0001F64F"
+                               u"\U0001F300-\U0001F5FF"
+                               u"\U0001F680-\U0001F6FF"
+                               u"\U0001F1E0-\U0001F1FF"
+                               "]+", flags=re.UNICODE)
+
+    return emoji_pattern.sub(r'', string)
 
 
 class RedisHandlerBackend(telebot.handler_backends.HandlerBackend):

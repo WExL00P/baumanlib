@@ -7,7 +7,8 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup, \
     ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from message_templates import *
 from db import session, Resource, Mark, User
-from utils import send_email
+from utils import send_email, remove_emoji
+from xml.sax.saxutils import escape
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
@@ -89,15 +90,13 @@ def check_query(message):
         return bot.send_message(chat_id, NO_RESULTS_MSG)
 
     for r in resources:
-        subject = SUBJECTS[r.discipline].capitalize()
-        result = f'*{r.title}*\n\n' \
-                 f'🏷️ {subject}\n' \
+        result = f'<b>{r.title}</b>\n\n' \
+                 f'{SUBJECTS[r.discipline]}\n' \
                  f'🎓 {r.course} курс\n' \
                  f'📊 Рейтинг: {r.rating}'
 
         markup = generate_result_markup(r.id)
-        bot.send_message(chat_id, result, reply_markup=markup,
-                         parse_mode='Markdown')
+        bot.send_message(chat_id, result, reply_markup=markup, parse_mode='html')
 
 
 @bot.callback_query_handler(
@@ -140,7 +139,6 @@ def change_rating(query):
     else:
         mark = Mark(file_id=resource.file_id, user_id=user_id, mark=rating)
         session.add(mark)
-        session.flush()
 
         resource.rating += rating
         msg = f'Материал оценён на {rating}'
@@ -159,20 +157,24 @@ def download_file(query):
         .filter(Resource.id == db_file_id) \
         .scalar()
 
+    bot.send_message(user_id, text=DOWNLOAD_SUCCESS_MSG)
     bot.send_document(user_id, file_id)
+    bot.answer_callback_query(callback_query_id=query.id)
 
 
 @bot.message_handler(commands=['upload'])
 def handle_upload(message):
     chat_id = message.chat.id
 
-    first_name = message.from_user.first_name
-    last_name = message.from_user.last_name
-    name = f'{first_name} {last_name}'
-
     if not check_verification(message.from_user.id):
-        markup = ReplyKeyboardMarkup(one_time_keyboard=True)
-        markup.row(KeyboardButton(name))
+        markup = None
+
+        first_name = message.from_user.first_name
+        last_name = message.from_user.last_name
+
+        if last_name:
+            markup = ReplyKeyboardMarkup(one_time_keyboard=True)
+            markup.row(KeyboardButton(f'{first_name} {last_name}'))
 
         instruction = bot.send_message(chat_id, NEEDS_REG_MSG, reply_markup=markup)
         return bot.register_next_step_handler(instruction, check_name_surname)
@@ -204,6 +206,8 @@ def check_material(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_material)
 
+    message.text = escape(message.text)
+
     global uploading_material
     uploading_material = Resource(title=message.text, author_id=author_id)
 
@@ -229,7 +233,7 @@ def check_course(message):
 
     markup = ReplyKeyboardMarkup(one_time_keyboard=True)
     for subject in SUBJECTS:
-        markup.row(KeyboardButton(subject.capitalize()))
+        markup.row(KeyboardButton(subject))
 
     instruction = bot.send_message(chat_id, UPLOAD_SUBJECT_MSG,
                                    reply_markup=markup)
@@ -250,7 +254,15 @@ def check_subject(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
-    uploading_material.discipline = SUBJECTS.index(message.text.upper())
+    message.text = remove_emoji(message.text).upper().strip()
+
+    discipline_i = -1
+    for i, subject in enumerate(SUBJECTS):
+        subject = remove_emoji(subject).upper().strip()
+        if subject == message.text:
+            discipline_i = i
+
+    uploading_material.discipline = discipline_i
 
     instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
                                    reply_markup=ReplyKeyboardRemove())
@@ -271,7 +283,7 @@ def check_file(message):
     uploading_material.rating = 0
 
     session.add(uploading_material)
-    session.flush()
+    session.commit()
 
     bot.send_message(chat_id, UPLOAD_SUCCESS_MSG)
 
@@ -290,6 +302,8 @@ def check_name_surname(message):
     if not is_name_surname_correct(message) or message.content_type != 'text':
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
+
+    message.text = escape(message.text)
 
     global registering_user
     registering_user = User(user_id=user_id, name=message.text)
@@ -340,7 +354,6 @@ def check_code(message):
     registering_user.verified = True
 
     session.add(registering_user)
-    session.flush()
     session.commit()
 
     bot.send_message(chat_id, REG_SUCCESS_MSG)
@@ -352,7 +365,7 @@ def handle_cancel(message, mode=None):
 
     if mode:
         no_keyboard = ReplyKeyboardRemove()
-        about_cancel_msg = f'Выход из режима {mode}'
+        about_cancel_msg = f'⛔️ Выход из режима {mode}'
 
         bot.send_message(chat_id, about_cancel_msg, reply_markup=no_keyboard)
 
@@ -362,4 +375,10 @@ def handle_cancel(message, mode=None):
 @bot.message_handler(commands=['about'])
 def handle_about(message):
     chat_id = message.chat.id
-    bot.send_message(chat_id, ABOUT_MSG)
+    bot.send_message(chat_id, ABOUT_MSG, parse_mode='html')
+
+
+@bot.message_handler(func=lambda message: True)
+def handle_unknown(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, UNKNOWN_CMD_MSG)
