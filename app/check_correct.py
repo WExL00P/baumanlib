@@ -2,6 +2,11 @@ from config import *
 
 
 def is_material_correct(message):
+    """
+    Проверяет корректность введенного описания материала
+    :param message: сообщение пользователя с описанием материала
+    :return: является ли описание корректным или нет
+    """
     if not hasattr(message, 'text'):
         return False
 
@@ -18,6 +23,11 @@ def is_material_correct(message):
 
 
 def is_course_correct(message):
+    """
+    Проверяет корректность введенного курса
+    :param message: сообщение пользователя с номером курса
+    :return: является ли курс корректным или нет
+    """
     if not hasattr(message, 'text'):
         return False
 
@@ -30,6 +40,11 @@ def is_course_correct(message):
 
 
 def is_subject_correct(message):
+    """
+    Проверяет корректность введенного предмета
+    :param message: сообщение пользователя с названием предмета
+    :return: является ли предмет корректным или нет
+    """
     if not hasattr(message, 'text'):
         return False
 
@@ -37,14 +52,28 @@ def is_subject_correct(message):
 
 
 def is_file_correct(message):
+    """
+    Проверяет корректность отправленного пользователем файла
+    :param message: сообщение пользователя с файлом
+    :return: является ли файл корректным или нет
+    """
     if not hasattr(message, 'text'):
         return False
 
-    text = message.document.mime_type.split('/')
-    return len(text) == 2 and text[1] in ALLOWED_EXTENSIONS
+    kind, extension = message.document.mime_type.split('/')
+
+    if not extension:
+        return False
+
+    return extension in ALLOWED_EXTENSIONS
 
 
 def is_name_surname_correct(message):
+    """
+    Проверяет корректность имени, фамилии пользователя
+    :param message: сообщение пользователя с именем и фамилией
+    :return: является ли имя, фамилия корректными или нет
+    """
     if not hasattr(message, 'text'):
         return False
 
@@ -61,6 +90,12 @@ def is_name_surname_correct(message):
 
 
 def is_email_correct(message):
+    """
+    Проверяет корректность адреса почты и ее принадлежность
+    студенту МГТУ им. Н.Э. Баумана
+    :param message: сообщение пользователя с адресом почты
+    :return: является ли почта корректной или нет
+    """
     if not hasattr(message, 'text'):
         return False
 
