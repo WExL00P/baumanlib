@@ -90,9 +90,8 @@ def check_query(message):
         return bot.send_message(chat_id, NO_RESULTS_MSG)
 
     for r in resources:
-        subject = SUBJECTS[r.discipline].capitalize()
         result = f'<b>{r.title}</b>\n\n' \
-                 f'{subject}\n' \
+                 f'{SUBJECTS[r.discipline]}\n' \
                  f'🎓 {r.course} курс\n' \
                  f'📊 Рейтинг: {r.rating}'
 
