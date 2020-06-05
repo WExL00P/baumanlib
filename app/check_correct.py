@@ -66,10 +66,18 @@ def is_file_correct(message):
     :param message: сообщение пользователя с файлом
     :return: является ли файл корректным или нет
     """
-    if not hasattr(message, 'text'):
+    if not hasattr(message, 'document'):
         return False
 
-    kind, extension = message.document.mime_type.split('/')
+    if not hasattr(message.document, 'mime_type'):
+        return False
+
+    mime_type = message.document.mime_type
+
+    if not mime_type or '/' not in mime_type:
+        return False
+
+    kind, extension = mime_type.split('/')
 
     if not extension:
         return False
