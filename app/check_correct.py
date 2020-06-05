@@ -105,4 +105,7 @@ def is_email_correct(message):
     except EmailNotValidError:
         return False
 
+    if any(name in valid.ascii_local_part for name in FORBIDDEN_MAIL_NAMES):
+        return False
+
     return valid.ascii_domain in ALLOWED_MAIL_DOMAINS
