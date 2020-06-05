@@ -1,15 +1,23 @@
 from check_correct import *
 
 
+class Document:
+    def __init__(self):
+        self.mime_type = None
+
+
 class Message:
     def __init__(self, text):
         self.text = text
+        self.document = None
+
 
 def test_is_title_correct():
     """
     Выполняет модульное тестирование функции is_title_correct
     """
-    assert is_title_correct(Message('')) is False    
+    assert is_title_correct('') is False
+    assert is_title_correct(Message('')) is False
     assert is_title_correct(Message('  ')) is False
     assert is_title_correct(Message('/')) is False
     assert is_title_correct(1488) is False
@@ -18,18 +26,20 @@ def test_is_title_correct():
     assert is_title_correct(Message('Who am I 2 disagree')) is True
     assert is_title_correct(Message('wexloop')) is True
     assert is_title_correct(Message('погроммирование.бмсту')) is True
-    assert is_title_correct(Message('Самбади ванс толд ми зэ ворлд из гонна ролл\
-                                    ми ай эйнт зэ шарпест тул ин зэ шэд щи воз\
-                                    лукин кайнда дамб виз хер фингер энд хер тамб\
-                                    ин зэ шейп оф ан эл он хёр фохэд вэлл зэ ерс\
-                                    старт каминг энд зэй донт стап камин феэ ту зэ\
-                                    рулз энд ай хит зэ граунд раннинг')) is False
-    
+    assert is_title_correct(Message('Самбади ванс толд ми зэ ворлд из гонна '
+                                    'ролл ми ай эйнт зэ шарпест тул ин зэ шэд '
+                                    'щи воз лукин кайнда дамб виз хер фингер '
+                                    'энд хер тамб ин зэ шейп оф ан эл он хёр '
+                                    'фохэд вэлл зэ ерс старт каминг энд зэй '
+                                    'донт стап камин фед ту зэ рулз энд ай '
+                                    'хит зэ граунд раннинг')) is False
+
 
 def test_is_course_correct():
     """
     Выполняет модульное тестирование функции is_course_correct
     """
+    assert is_course_correct('') is False
     assert is_course_correct(Message('')) is False
     assert is_course_correct(Message('  ')) is False
     assert is_course_correct(Message('/')) is False
@@ -46,10 +56,12 @@ def test_is_course_correct():
     assert is_course_correct(Message('6')) is True
     assert is_course_correct(Message('1')) is True
 
+
 def test_is_subject_correct():
     """
     Выполняет модульное тестирование функции is_subject_correct
     """
+    assert is_subject_correct('') is False
     assert is_subject_correct(Message('')) is False
     assert is_subject_correct(Message('  ')) is False
     assert is_subject_correct(Message('/')) is False
@@ -61,10 +73,12 @@ def test_is_subject_correct():
     assert is_subject_correct(Message('Программирование')) is True
     assert is_subject_correct(Message('ПРОГРАММИРОВАНИЕ')) is True
 
+
 def test_is_name_surname_correct():
     """
     Выполняет модульное тестирование функции is_name_surname_correct
     """
+    assert is_name_surname_correct('') is False
     assert is_name_surname_correct(Message('')) is False
     assert is_name_surname_correct(Message('  ')) is False
     assert is_name_surname_correct(Message('/')) is False
@@ -79,10 +93,12 @@ def test_is_name_surname_correct():
     assert is_name_surname_correct(Message('Пум-пум Пум-пурум')) is True
     assert is_name_surname_correct(Message('Пу Руру')) is True
 
+
 def test_is_email_correct():
     """
     Выполняет модульное тестирование функции is_email_correct
     """
+    assert is_email_correct('') is False
     assert is_email_correct(Message('')) is False
     assert is_email_correct(Message(' ')) is False
     assert is_email_correct(Message('@')) is False
@@ -98,3 +114,32 @@ def test_is_email_correct():
     assert is_email_correct(Message('@student.bmstu.ru')) is False
     assert is_email_correct(Message('alexodnodvorcev@bmstu.ru')) is True
     assert is_email_correct(Message('kmd19u791@student.bmstu.ru')) is True
+
+
+def test_is_file_correct():
+    """
+    Выполняет модульное тестирование функции is_file_correct
+    """
+    assert is_file_correct('') is False
+
+    message = Message('hello')
+    assert is_file_correct(message) is False
+
+    message.document = Document()
+    message.document.mime_type = 'a'
+    assert is_file_correct(message) is False
+
+    message.document.mime_type = '/'
+    assert is_file_correct(message) is False
+
+    message.document.mime_type = 'a/'
+    assert is_file_correct(message) is False
+
+    message.document.mime_type = 'a/b'
+    assert is_file_correct(message) is False
+
+    message.document.mime_type = 'image/png'
+    assert is_file_correct(message) is False
+
+    message.document.mime_type = 'application/pdf'
+    assert is_file_correct(message) is True
