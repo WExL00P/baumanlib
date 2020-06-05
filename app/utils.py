@@ -1,5 +1,20 @@
+import os
 import pickle
+import smtplib
 import telebot
+
+
+def send_email(address, subject, body):
+    try:
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.ehlo()
+        server.starttls()
+        server.login(os.getenv('EMAIL_ADDRESS'), os.getenv('EMAIL_PASSWORD'))
+        message = 'Subject: {}\n\n{}'.format(subject, body)
+        server.sendmail(os.getenv('EMAIL_ADDRESS'), address, message)
+        server.quit()
+    except:
+        print("Email failed to send.")
 
 
 class RedisHandlerBackend(telebot.handler_backends.HandlerBackend):
