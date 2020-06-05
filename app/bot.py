@@ -365,3 +365,9 @@ def handle_cancel(message, mode=None):
 def handle_about(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, ABOUT_MSG)
+
+
+@bot.message_handler(func=lambda message: True)
+def handle_unknown(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, UNKNOWN_CMD_MSG)
