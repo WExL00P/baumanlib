@@ -166,13 +166,15 @@ def download_file(query):
 def handle_upload(message):
     chat_id = message.chat.id
 
-    first_name = message.from_user.first_name
-    last_name = message.from_user.last_name
-    name = f'{first_name} {last_name}'
-
     if not check_verification(message.from_user.id):
-        markup = ReplyKeyboardMarkup(one_time_keyboard=True)
-        markup.row(KeyboardButton(name))
+        markup = None
+
+        first_name = message.from_user.first_name
+        last_name = message.from_user.last_name
+
+        if last_name:
+            markup = ReplyKeyboardMarkup(one_time_keyboard=True)
+            markup.row(KeyboardButton(f'{first_name} {last_name}'))
 
         instruction = bot.send_message(chat_id, NEEDS_REG_MSG, reply_markup=markup)
         return bot.register_next_step_handler(instruction, check_name_surname)
