@@ -50,11 +50,11 @@ def is_subject_correct(message):
     if not hasattr(message, 'text'):
         return False
 
-    message.text = remove_emoji(message.text).upper().strip()
+    text = remove_emoji(message.text).upper().strip()
 
     for subject in SUBJECTS:
         subject = remove_emoji(subject).upper().strip()
-        if subject == message.text:
+        if subject == text:
             return True
 
     return False
