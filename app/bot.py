@@ -365,9 +365,7 @@ def handle_cancel(message, mode=None):
 
     if mode:
         no_keyboard = ReplyKeyboardRemove()
-        about_cancel_msg = f'⛔️ Выход из режима {mode}'
-
-        bot.send_message(chat_id, about_cancel_msg, reply_markup=no_keyboard)
+        bot.send_message(chat_id, cancel_msg(mode), reply_markup=no_keyboard)
 
     call(message)
 

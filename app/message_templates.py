@@ -79,6 +79,8 @@ SEARCH_FOUND_MANY_MSG = 'Они отсортированы по убыванию
                         'отображаются снизу, чтобы тебе не пришлось долго ' \
                         'листать наверх :)'
 
+CANCEL_MSG = '⛔️ Выход из режима {}'
+
 
 def search_found_msg(count):
     remainder = count % 10
@@ -98,3 +100,7 @@ def search_found_msg(count):
         msg += ' ' + SEARCH_FOUND_MANY_MSG
 
     return msg
+
+
+def cancel_msg(mode):
+    return CANCEL_MSG.format(mode)

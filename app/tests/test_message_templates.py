@@ -2,6 +2,9 @@ from message_templates import *
 
 
 def test_search_found_msg():
+    """
+    Выполняет модульное тестирование функции search_found_msg
+    """
     assert search_found_msg(0) == SEARCH_FOUND_MSG.format('0', 'материалов')
     assert search_found_msg(1) == SEARCH_FOUND_MSG.format('1', 'материал')
 
@@ -15,3 +18,11 @@ def test_search_found_msg():
 
     assert search_found_msg(101) == combined.format('101', 'материал')
     assert search_found_msg(105) == combined.format('105', 'материалов')
+
+
+def test_cancel_msg():
+    """
+    Выполняет модульное тестирование функции cancel_msg
+    """
+    assert cancel_msg('а') == CANCEL_MSG.format('а')
+    assert cancel_msg('регистрации') == CANCEL_MSG.format('регистрации')
