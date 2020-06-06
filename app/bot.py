@@ -2,9 +2,7 @@ import os
 import telebot
 import redis
 import json
-
 from sqlalchemy import or_
-
 from check_correct import *
 from telebot.types import (
     KeyboardButton, ReplyKeyboardMarkup,
@@ -14,9 +12,8 @@ from telebot.types import (
 from message_templates import *
 from db import session, Resource, Mark, User
 from utils import (
-    send_email, remove_emoji,
-    ALL_CONTENT_TYPES, RedisHandlerBackend,
-    save_states, get_states
+    send_email, ALL_CONTENT_TYPES,
+    RedisHandlerBackend, save_states, get_states
 )
 from xml.sax.saxutils import escape
 from config import SUBJECTS, COMMANDS
