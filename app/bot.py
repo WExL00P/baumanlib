@@ -30,10 +30,10 @@ bot = telebot.TeleBot(
 
 class State:
     def __init__(self):
-        self.uploading_material = None
-        self.registering_user = None
-        self.last_email_date = None
-        self.email_attempt = 0
+        self.uploading_material = None  # текущий загружаемый материал
+        self.registering_user = None  # текущий регистрирующийся пользователь
+        self.last_email_date = None  # дата последней отправки письма с кодом
+        self.email_attempt = 0  # количество отправленных писем с кодом
 
 
 states = get_states(redis_conn)
