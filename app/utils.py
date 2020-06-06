@@ -24,18 +24,29 @@ def send_email(address, subject, body):
         server.sendmail(os.getenv('EMAIL_ADDRESS'), address, msg.as_string())
         server.quit()
     except:
-        print("Email failed to send.")
+        print('Email failed to send.')
 
 
 def remove_emoji(string):
-    emoji_pattern = re.compile("["
-                               u"\U0001F600-\U0001F64F"
-                               u"\U0001F300-\U0001F5FF"
-                               u"\U0001F680-\U0001F6FF"
-                               u"\U0001F1E0-\U0001F1FF"
-                               "]+", flags=re.UNICODE)
+    emoji_pattern = re.compile('['
+                               u'\U0001F600-\U0001F64F'
+                               u'\U0001F300-\U0001F5FF'
+                               u'\U0001F680-\U0001F6FF'
+                               u'\U0001F1E0-\U0001F1FF'
+                               ']+', flags=re.UNICODE)
 
     return emoji_pattern.sub(r'', string)
+
+
+def save_states(conn, states):
+    conn.set('states', pickle.dumps(states))
+
+
+def get_states(conn):
+    if not conn.exists('states'):
+        return {}
+
+    return pickle.loads(conn.get('states'))
 
 
 class RedisHandlerBackend(telebot.handler_backends.HandlerBackend):

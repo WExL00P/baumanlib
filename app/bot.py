@@ -12,11 +12,12 @@ from message_templates import *
 from db import session, Resource, Mark, User
 from utils import (
     send_email, remove_emoji,
-    ALL_CONTENT_TYPES, RedisHandlerBackend
+    ALL_CONTENT_TYPES, RedisHandlerBackend,
+    save_states, get_states
 )
 from xml.sax.saxutils import escape
 from config import SUBJECTS, COMMANDS
-from datetime import datetime, timedelta
+from datetime import datetime
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
@@ -27,10 +28,15 @@ bot = telebot.TeleBot(
 )
 
 
-uploading_material = None
-registering_user = None
-last_email_date = None
-email_attempt = 0
+class State:
+    def __init__(self):
+        self.uploading_material = None
+        self.registering_user = None
+        self.last_email_date = None
+        self.email_attempt = 0
+
+
+states = get_states(redis_conn)
 
 
 def call(message):
@@ -182,13 +188,17 @@ def download_file(query):
 def initiate_registration(chat_id, from_user):
     markup = None
 
+    if chat_id not in states:
+        states[chat_id] = State()
+
     first_name = from_user.first_name
     last_name = from_user.last_name
+    state = states[chat_id]
 
     bot.send_message(chat_id, NEEDS_REG_MSG)
 
-    if last_email_date and email_attempt > MAX_NO_LIMIT_ATTEMPTS:
-        seconds_passed = (datetime.now() - last_email_date).seconds
+    if state.last_email_date and state.email_attempt > MAX_NO_LIMIT_ATTEMPTS:
+        seconds_passed = (datetime.now() - state.last_email_date).seconds
         seconds_left = EMAIL_LIMIT - seconds_passed
 
         if seconds_left > 0:
@@ -197,6 +207,8 @@ def initiate_registration(chat_id, from_user):
     if last_name:
         markup = ReplyKeyboardMarkup(one_time_keyboard=True)
         markup.row(KeyboardButton(f'{first_name} {last_name}'))
+
+    save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, REG_NAME_SURNAME_MSG,
                                    reply_markup=markup)
@@ -236,8 +248,13 @@ def check_material(message):
 
     message.text = escape(message.text)
 
-    global uploading_material
-    uploading_material = Resource(title=message.text, author_id=author_id)
+    if chat_id not in states:
+        states[chat_id] = State()
+
+    states[chat_id].uploading_material = Resource(title=message.text,
+                                                  author_id=author_id)
+
+    save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, UPLOAD_COURSE_MSG)
     bot.register_next_step_handler(instruction, check_course)
@@ -254,11 +271,13 @@ def check_course(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_course)
 
-    uploading_material.course = message.text
+    states[chat_id].uploading_material.course = message.text
 
     markup = ReplyKeyboardMarkup(one_time_keyboard=True)
     for subject in SUBJECTS:
         markup.row(KeyboardButton(subject))
+
+    save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, UPLOAD_SUBJECT_MSG,
                                    reply_markup=markup)
@@ -284,7 +303,8 @@ def check_subject(message):
         if subject == message.text:
             discipline_i = i
 
-    uploading_material.discipline = discipline_i
+    states[chat_id].uploading_material.discipline = discipline_i
+    save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
                                    reply_markup=ReplyKeyboardRemove())
@@ -301,11 +321,15 @@ def check_file(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_file)
 
+    uploading_material = states[chat_id].uploading_material
+
     uploading_material.file_id = message.document.file_id
     uploading_material.rating = 0
 
     session.add(uploading_material)
     session.commit()
+
+    save_states(redis_conn, states)
 
     bot.send_message(chat_id, UPLOAD_SUCCESS_MSG)
 
@@ -324,8 +348,11 @@ def check_name_surname(message):
 
     message.text = escape(message.text)
 
-    global registering_user
-    registering_user = User(user_id=user_id, name=message.text)
+    if chat_id not in states:
+        states[chat_id] = State()
+
+    states[chat_id].registering_user = User(user_id=user_id, name=message.text)
+    save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, REG_MAIL_MSG,
                                    reply_markup=ReplyKeyboardRemove())
@@ -343,18 +370,21 @@ def check_email(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
-    registering_user.code = str(int.from_bytes(os.urandom(2), "little"))
-    registering_user.email = message.text
+    state = states[chat_id]
+
+    state.registering_user.code = str(int.from_bytes(os.urandom(2), "little"))
+    state.registering_user.email = message.text
 
     # ставим статус боту, пока письмо отправляется
     bot.send_chat_action(chat_id, 'typing')
 
-    send_email(registering_user.email, "Регистрация в боте BaumanLib",
-               registering_user.code)
+    send_email(state.registering_user.email, "Регистрация в боте BaumanLib",
+               state.registering_user.code)
 
-    global last_email_date, email_attempt
-    last_email_date = datetime.now()
-    email_attempt += 1
+    state.last_email_date = datetime.now()
+    state.email_attempt += 1
+
+    save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, REG_CODE_MSG)
     bot.register_next_step_handler(instruction, check_code)
@@ -366,6 +396,8 @@ def check_code(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
+    registering_user = states[chat_id].registering_user
+
     if message.content_type != 'text' or message.text.startswith('/') \
             or registering_user.code != message.text:
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
@@ -375,6 +407,8 @@ def check_code(message):
 
     session.add(registering_user)
     session.commit()
+
+    save_states(redis_conn, states)
 
     bot.send_message(chat_id, REG_SUCCESS_MSG)
 
