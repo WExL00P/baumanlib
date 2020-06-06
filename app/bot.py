@@ -30,6 +30,7 @@ bot = telebot.TeleBot(
 uploading_material = None
 registering_user = None
 last_email_date = None
+email_attempt = 0
 
 
 def call(message):
@@ -186,7 +187,7 @@ def initiate_registration(chat_id, from_user):
 
     bot.send_message(chat_id, NEEDS_REG_MSG)
 
-    if last_email_date is not None:
+    if last_email_date and email_attempt > MAX_NO_LIMIT_ATTEMPTS:
         seconds_passed = (datetime.now() - last_email_date).seconds
         seconds_left = EMAIL_LIMIT - seconds_passed
 
@@ -351,8 +352,9 @@ def check_email(message):
     send_email(registering_user.email, "Регистрация в боте BaumanLib",
                registering_user.code)
 
-    global last_email_date
+    global last_email_date, email_attempt
     last_email_date = datetime.now()
+    email_attempt += 1
 
     instruction = bot.send_message(chat_id, REG_CODE_MSG)
     bot.register_next_step_handler(instruction, check_code)
