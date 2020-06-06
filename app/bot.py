@@ -128,6 +128,10 @@ def change_rating(query):
     file_id = query_json['id']
     rating = query_json['value']
 
+    if not check_verification(user_id):
+        bot.answer_callback_query(callback_query_id=query.id)
+        return initiate_registration(user_id, query.from_user)
+
     resource = session.query(Resource) \
         .filter(Resource.id == file_id)
 
@@ -174,6 +178,10 @@ def download_file(query):
     user_id = query.from_user.id
     db_file_id = json.loads(query.data)['id']
 
+    if not check_verification(user_id):
+        bot.answer_callback_query(callback_query_id=query.id)
+        return initiate_registration(user_id, query.from_user)
+
     file_id = session.query(Resource.file_id) \
         .filter(Resource.id == db_file_id) \
         .scalar()
@@ -181,9 +189,6 @@ def download_file(query):
     if not file_id:
         return bot.answer_callback_query(callback_query_id=query.id,
                                          text=FILE_NOT_FOUND_MSG)
-
-    if not check_verification(user_id):
-        return initiate_registration(user_id, query.from_user)
 
     bot.send_message(user_id, text=DOWNLOAD_SUCCESS_MSG)
     bot.send_document(user_id, file_id)
