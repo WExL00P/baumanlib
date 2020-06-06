@@ -15,6 +15,7 @@ from utils import (
     ALL_CONTENT_TYPES, RedisHandlerBackend
 )
 from xml.sax.saxutils import escape
+from config import SUBJECTS, COMMANDS
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
