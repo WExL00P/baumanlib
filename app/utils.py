@@ -1,8 +1,6 @@
 import os
-import pickle
 import smtplib
 import re
-import telebot
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -36,44 +34,3 @@ def remove_emoji(string):
                                ']+', flags=re.UNICODE)
 
     return emoji_pattern.sub(r'', string)
-
-
-def save_states(conn, states):
-    conn.set('states', pickle.dumps(states))
-
-
-def get_states(conn):
-    if not conn.exists('states'):
-        return {}
-
-    return pickle.loads(conn.get('states'))
-
-
-class RedisHandlerBackend(telebot.handler_backends.HandlerBackend):
-    def __init__(self, connection, handlers=None, prefix='telebot'):
-        super(RedisHandlerBackend, self).__init__(handlers)
-        self.prefix = prefix
-        self.redis = connection
-
-    def _key(self, handle_group_id):
-        return ':'.join((self.prefix, str(handle_group_id)))
-
-    def register_handler(self, handler_group_id, handler):
-        handlers = []
-        value = self.redis.get(self._key(handler_group_id))
-        if value:
-            handlers = pickle.loads(value)
-        handlers.append(handler)
-        self.redis.set(self._key(handler_group_id), pickle.dumps(handlers))
-
-    def clear_handlers(self, handler_group_id):
-        self.redis.delete(self._key(handler_group_id))
-
-    def get_handlers(self, handler_group_id):
-        handlers = []
-        value = self.redis.get(self._key(handler_group_id))
-        if value:
-            handlers = pickle.loads(value)
-            self.clear_handlers(handler_group_id)
-
-        return handlers

@@ -1,42 +1,29 @@
 import os
 import telebot
-import redis
 import json
+from datetime import datetime
+from xml.sax.saxutils import escape
 from sqlalchemy import or_, and_
-from check_correct import *
 from telebot.types import (
     KeyboardButton, ReplyKeyboardMarkup,
     ReplyKeyboardRemove, InlineKeyboardButton,
     InlineKeyboardMarkup
 )
-from message_templates import *
-from db import session, Resource, Mark, User
-from utils import (
-    send_email, ALL_CONTENT_TYPES,
-    RedisHandlerBackend, save_states, get_states
-)
-from xml.sax.saxutils import escape
 from config import SUBJECTS, COMMANDS
-from datetime import datetime
-
-redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
-
-TOKEN = os.getenv('TELEGRAM_TOKEN')
-bot = telebot.TeleBot(
-    TOKEN,
-    next_step_backend=RedisHandlerBackend(redis_conn)
+from message_templates import *
+from check_correct import *
+from utils import send_email, ALL_CONTENT_TYPES
+from db import (
+    session, Resource, Mark, User,
+    State, save_state, get_state, clear_state,
+    next_step_backend
 )
 
 
-class State:
-    def __init__(self):
-        self.uploading_material = None  # текущий загружаемый материал
-        self.registering_user = None  # текущий регистрирующийся пользователь
-        self.last_email_date = None  # дата последней отправки письма с кодом
-        self.email_attempt = 0  # количество отправленных писем с кодом
-
-
-states = get_states(redis_conn)
+bot = telebot.TeleBot(
+    os.getenv('TELEGRAM_TOKEN'),
+    next_step_backend=next_step_backend
+)
 
 
 def call(message):
@@ -208,12 +195,12 @@ def download_file(query):
 def initiate_registration(chat_id, from_user):
     markup = None
 
-    if chat_id not in states:
-        states[chat_id] = State()
+    state = get_state(chat_id)
+    if not state:
+        state = State()
 
     first_name = from_user.first_name
     last_name = from_user.last_name
-    state = states[chat_id]
 
     bot.send_message(chat_id, NEEDS_REG_MSG)
 
@@ -228,7 +215,7 @@ def initiate_registration(chat_id, from_user):
         markup = ReplyKeyboardMarkup(one_time_keyboard=True)
         markup.row(KeyboardButton(f'{first_name} {last_name}'))
 
-    save_states(redis_conn, states)
+    save_state(chat_id, state)
 
     instruction = bot.send_message(chat_id, REG_NAME_SURNAME_MSG,
                                    reply_markup=markup)
@@ -268,13 +255,14 @@ def check_material(message):
 
     message.text = escape(message.text)
 
-    if chat_id not in states:
-        states[chat_id] = State()
+    state = get_state(chat_id)
+    if not state:
+        state = State()
 
-    states[chat_id].uploading_material = Resource(title=message.text,
+    state.uploading_material = Resource(title=message.text,
                                                   author_id=author_id)
 
-    save_states(redis_conn, states)
+    save_state(chat_id, state)
 
     instruction = bot.send_message(chat_id, UPLOAD_COURSE_MSG)
     bot.register_next_step_handler(instruction, check_course)
@@ -291,13 +279,14 @@ def check_course(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_course)
 
-    states[chat_id].uploading_material.course = message.text
+    state = get_state(chat_id)
+    state.uploading_material.course = message.text
 
     markup = ReplyKeyboardMarkup(one_time_keyboard=True)
     for subject in SUBJECTS:
         markup.row(KeyboardButton(subject))
 
-    save_states(redis_conn, states)
+    save_state(chat_id, state)
 
     instruction = bot.send_message(chat_id, UPLOAD_SUBJECT_MSG,
                                    reply_markup=markup)
@@ -315,9 +304,10 @@ def check_subject(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
-    states[chat_id].uploading_material.discipline = message.text
+    state = get_state(chat_id)
+    state.uploading_material.discipline = message.text
 
-    save_states(redis_conn, states)
+    save_state(chat_id, state)
 
     instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
                                    reply_markup=ReplyKeyboardRemove())
@@ -334,7 +324,8 @@ def check_file(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_file)
 
-    uploading_material = states[chat_id].uploading_material
+    state = get_state(chat_id)
+    uploading_material = state.uploading_material
 
     uploading_material.file_id = message.document.file_id
     uploading_material.rating = 0
@@ -344,7 +335,8 @@ def check_file(message):
     session.add(uploading_material)
     session.commit()
 
-    save_states(redis_conn, states)
+    # Закончили — можем отчистить состояние
+    clear_state(chat_id)
 
     bot.send_message(chat_id, UPLOAD_SUCCESS_MSG)
 
@@ -363,11 +355,12 @@ def check_name_surname(message):
 
     message.text = escape(message.text)
 
-    if chat_id not in states:
-        states[chat_id] = State()
+    state = get_state(chat_id)
+    if not state:
+        state = State()
 
-    states[chat_id].registering_user = User(user_id=user_id, name=message.text)
-    save_states(redis_conn, states)
+    state.registering_user = User(user_id=user_id, name=message.text)
+    save_state(chat_id, state)
 
     instruction = bot.send_message(chat_id, REG_MAIL_MSG,
                                    reply_markup=ReplyKeyboardRemove())
@@ -385,7 +378,7 @@ def check_email(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
-    state = states[chat_id]
+    state = get_state(chat_id)
 
     state.registering_user.code = str(int.from_bytes(os.urandom(2), 'little'))
     state.registering_user.email = message.text
@@ -399,7 +392,7 @@ def check_email(message):
     state.last_email_date = datetime.now()
     state.email_attempt += 1
 
-    save_states(redis_conn, states)
+    save_state(chat_id, state)
 
     instruction = bot.send_message(chat_id, REG_CODE_MSG)
     bot.register_next_step_handler(instruction, check_code)
@@ -411,7 +404,8 @@ def check_code(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
-    registering_user = states[chat_id].registering_user
+    state = get_state(chat_id)
+    registering_user = state.registering_user
 
     if message.content_type != 'text' or message.text.startswith('/') \
             or registering_user.code != message.text:
@@ -423,7 +417,8 @@ def check_code(message):
     session.add(registering_user)
     session.commit()
 
-    save_states(redis_conn, states)
+    # Закончили — можем отчистить состояние
+    clear_state(chat_id)
 
     bot.send_message(chat_id, REG_SUCCESS_MSG)
 
@@ -431,6 +426,8 @@ def check_code(message):
 @bot.message_handler(commands=['cancel'])
 def handle_cancel(message, mode=None):
     chat_id = message.chat.id
+
+    clear_state(chat_id)
 
     if mode:
         no_keyboard = ReplyKeyboardRemove()
