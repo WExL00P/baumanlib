@@ -6,6 +6,9 @@ import telebot
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+ALL_CONTENT_TYPES = ['text', 'audio', 'document', 'photo', 'sticker', 'video',
+                     'video_note', 'voice', 'location', 'contact', 'poll']
+
 
 def send_email(address, subject, body):
     try:

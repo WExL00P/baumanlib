@@ -7,7 +7,7 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup, \
     ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from message_templates import *
 from db import session, Resource, Mark, User
-from utils import send_email, remove_emoji
+from utils import send_email, remove_emoji, ALL_CONTENT_TYPES
 from xml.sax.saxutils import escape
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
@@ -77,8 +77,8 @@ def check_query(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'поиска')
 
-    if message.text.startswith('/') or message.content_type != 'text':
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
+    if message.content_type != 'text' or message.text.startswith('/'):
+        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_query)
 
     query = f'%{message.text}%'
@@ -209,11 +209,8 @@ def check_material(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if message.text.startswith('/'):
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
-        return bot.register_next_step_handler(instruction, check_material)
-
-    if message.content_type != 'text' or not is_title_correct(message):
+    if message.content_type != 'text' or message.text.startswith('/') \
+            or not is_title_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_material)
 
@@ -232,11 +229,8 @@ def check_course(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if message.text.startswith('/'):
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
-        return bot.register_next_step_handler(instruction, check_course)
-
-    if message.content_type != 'text' or not is_course_correct(message):
+    if message.content_type != 'text' or message.text.startswith('/') \
+            or not is_course_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_course)
 
@@ -257,11 +251,8 @@ def check_subject(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if message.text.startswith('/'):
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
-        return bot.register_next_step_handler(instruction, check_subject)
-
-    if message.content_type != 'text' or not is_subject_correct(message):
+    if message.content_type != 'text' or message.text.startswith('/') \
+            or not is_subject_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
@@ -306,11 +297,8 @@ def check_name_surname(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
-    if message.text.startswith('/'):
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
-        return bot.register_next_step_handler(instruction, check_name_surname)
-
-    if not is_name_surname_correct(message) or message.content_type != 'text':
+    if message.content_type != 'text' or message.text.startswith('/') \
+            or not is_name_surname_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
@@ -330,11 +318,8 @@ def check_email(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
-    if message.text.startswith('/'):
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
-        return bot.register_next_step_handler(instruction, check_email)
-
-    if not is_email_correct(message) or message.content_type != 'text':
+    if message.content_type != 'text' or message.text.startswith('/') \
+            or not is_email_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
@@ -354,11 +339,8 @@ def check_code(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
-    if message.text.startswith('/'):
-        instruction = bot.send_message(chat_id, UNKNOWN_CMD_MSG)
-        return bot.register_next_step_handler(instruction, check_code)
-
-    if message.content_type != 'text' or registering_user.code != message.text:
+    if message.content_type != 'text' or message.text.startswith('/') \
+            or registering_user.code != message.text:
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_code)
 
@@ -389,7 +371,7 @@ def handle_about(message):
     bot.send_message(chat_id, ABOUT_MSG, parse_mode='html')
 
 
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(content_types=ALL_CONTENT_TYPES)
 def handle_unknown(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, UNKNOWN_CMD_MSG)
