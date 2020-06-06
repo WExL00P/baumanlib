@@ -16,6 +16,7 @@ from utils import (
 )
 from xml.sax.saxutils import escape
 from config import SUBJECTS, COMMANDS
+from datetime import datetime, timedelta
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
@@ -28,6 +29,7 @@ bot = telebot.TeleBot(
 
 uploading_material = None
 registering_user = None
+last_email_date = None
 
 
 def call(message):
@@ -182,11 +184,21 @@ def initiate_registration(chat_id, from_user):
     first_name = from_user.first_name
     last_name = from_user.last_name
 
+    bot.send_message(chat_id, NEEDS_REG_MSG)
+
+    if last_email_date is not None:
+        seconds_passed = (datetime.now() - last_email_date).seconds
+        seconds_left = EMAIL_LIMIT - seconds_passed
+
+        if seconds_left > 0:
+            return bot.send_message(chat_id, reg_limit_msg(seconds_left))
+
     if last_name:
         markup = ReplyKeyboardMarkup(one_time_keyboard=True)
         markup.row(KeyboardButton(f'{first_name} {last_name}'))
 
-    instruction = bot.send_message(chat_id, NEEDS_REG_MSG, reply_markup=markup)
+    instruction = bot.send_message(chat_id, REG_NAME_SURNAME_MSG,
+                                   reply_markup=markup)
     return bot.register_next_step_handler(instruction, check_name_surname)
 
 
@@ -333,8 +345,14 @@ def check_email(message):
     registering_user.code = str(int.from_bytes(os.urandom(2), "little"))
     registering_user.email = message.text
 
+    # ставим статус боту, пока письмо отправляется
+    bot.send_chat_action(chat_id, 'typing')
+
     send_email(registering_user.email, "Регистрация в боте BaumanLib",
                registering_user.code)
+
+    global last_email_date
+    last_email_date = datetime.now()
 
     instruction = bot.send_message(chat_id, REG_CODE_MSG)
     bot.register_next_step_handler(instruction, check_code)
