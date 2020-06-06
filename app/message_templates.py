@@ -119,7 +119,7 @@ def reg_limit_msg(seconds):
     if 11 <= seconds <= 19 or remainder == 0:
         noun = 'секунд'
     elif remainder == 1:
-        noun = 'секунда'
+        noun = 'секунду'
     elif 2 <= remainder <= 4:
         noun = 'секунды'
     else:
