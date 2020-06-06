@@ -3,11 +3,17 @@ import telebot
 import redis
 import json
 from check_correct import *
-from telebot.types import KeyboardButton, ReplyKeyboardMarkup, \
-    ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telebot.types import (
+    KeyboardButton, ReplyKeyboardMarkup,
+    ReplyKeyboardRemove, InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
 from message_templates import *
 from db import session, Resource, Mark, User
-from utils import send_email, remove_emoji, ALL_CONTENT_TYPES
+from utils import (
+    send_email, remove_emoji,
+    ALL_CONTENT_TYPES, RedisHandlerBackend
+)
 from xml.sax.saxutils import escape
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
@@ -15,7 +21,7 @@ redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(
     TOKEN,
-    #  next_step_backend=utils.RedisHandlerBackend(redis_conn)
+    next_step_backend=RedisHandlerBackend(redis_conn)
 )
 
 
