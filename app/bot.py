@@ -2,7 +2,7 @@ import os
 import telebot
 import redis
 import json
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from check_correct import *
 from telebot.types import (
     KeyboardButton, ReplyKeyboardMarkup,
@@ -482,7 +482,7 @@ def delete_material(query):
         return initiate_registration(user_id, query.from_user)
 
     resource = session.query(Resource) \
-        .filter(Resource.id == db_file_id)
+        .filter(and_(Resource.id == db_file_id, Resource.author_id == user_id))
 
     if resource.count() == 0:
         return bot.answer_callback_query(callback_query_id=query.id,
