@@ -2,6 +2,9 @@ import os
 import telebot
 import redis
 import json
+
+from sqlalchemy import or_
+
 from check_correct import *
 from telebot.types import (
     KeyboardButton, ReplyKeyboardMarkup,
@@ -99,7 +102,8 @@ def check_query(message):
 
     query = f'%{message.text}%'
     resources = session.query(Resource) \
-        .filter(Resource.title.ilike(query)) \
+        .filter(or_(Resource.title.ilike(query),
+                    Resource.discipline.ilike(query))) \
         .order_by(Resource.rating.asc())
 
     resources_n = resources.count()
@@ -109,7 +113,7 @@ def check_query(message):
 
     for r in resources:
         result = f'<b>{r.title}</b>\n\n' \
-                 f'{SUBJECTS[r.discipline]}\n' \
+                 f'{r.discipline}\n' \
                  f'🎓 {r.course} курс\n' \
                  f'📊 Рейтинг: {r.rating}'
 
@@ -305,15 +309,7 @@ def check_subject(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
-    message.text = remove_emoji(message.text).upper().strip()
-
-    discipline_i = -1
-    for i, subject in enumerate(SUBJECTS):
-        subject = remove_emoji(subject).upper().strip()
-        if subject == message.text:
-            discipline_i = i
-
-    states[chat_id].uploading_material.discipline = discipline_i
+    states[chat_id].uploading_material.discipline = message.text
     save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
