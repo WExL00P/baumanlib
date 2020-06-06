@@ -86,7 +86,9 @@ def check_query(message):
         .filter(Resource.title.ilike(query)) \
         .order_by(Resource.rating.asc())
 
-    if resources.count() == 0:
+    resources_n = resources.count()
+
+    if resources_n == 0:
         return bot.send_message(chat_id, NO_RESULTS_MSG)
 
     for r in resources:
@@ -97,6 +99,8 @@ def check_query(message):
 
         markup = generate_result_markup(r.id)
         bot.send_message(chat_id, result, reply_markup=markup, parse_mode='html')
+
+    bot.send_message(chat_id, search_found_msg(resources_n))
 
 
 @bot.callback_query_handler(
