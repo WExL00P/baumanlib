@@ -153,6 +153,9 @@ def download_file(query):
     user_id = query.from_user.id
     db_file_id = json.loads(query.data)['id']
 
+    if not check_verification(user_id):
+        return initiate_registration(user_id, query.from_user)
+
     file_id = session.query(Resource.file_id) \
         .filter(Resource.id == db_file_id) \
         .scalar()
@@ -162,22 +165,26 @@ def download_file(query):
     bot.answer_callback_query(callback_query_id=query.id)
 
 
+def initiate_registration(chat_id, from_user):
+    markup = None
+
+    first_name = from_user.first_name
+    last_name = from_user.last_name
+
+    if last_name:
+        markup = ReplyKeyboardMarkup(one_time_keyboard=True)
+        markup.row(KeyboardButton(f'{first_name} {last_name}'))
+
+    instruction = bot.send_message(chat_id, NEEDS_REG_MSG, reply_markup=markup)
+    return bot.register_next_step_handler(instruction, check_name_surname)
+
+
 @bot.message_handler(commands=['upload'])
 def handle_upload(message):
     chat_id = message.chat.id
 
     if not check_verification(message.from_user.id):
-        markup = None
-
-        first_name = message.from_user.first_name
-        last_name = message.from_user.last_name
-
-        if last_name:
-            markup = ReplyKeyboardMarkup(one_time_keyboard=True)
-            markup.row(KeyboardButton(f'{first_name} {last_name}'))
-
-        instruction = bot.send_message(chat_id, NEEDS_REG_MSG, reply_markup=markup)
-        return bot.register_next_step_handler(instruction, check_name_surname)
+        return initiate_registration(chat_id, message.from_user)
 
     instruction = bot.send_message(chat_id, UPLOAD_TITLE_MSG)
     bot.register_next_step_handler(instruction, check_material)
