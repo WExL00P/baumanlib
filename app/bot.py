@@ -87,6 +87,13 @@ def generate_result_markup(material_id):
     return markup
 
 
+def format_material(material):
+    return f'<b>{material.title}</b>\n\n' \
+        f'{material.discipline}\n' \
+        f'🎓 {material.course} курс\n' \
+        f'📊 Рейтинг: {material.rating}'
+
+
 def check_query(message):
     chat_id = message.chat.id
 
@@ -109,14 +116,13 @@ def check_query(message):
         return bot.send_message(chat_id, NO_RESULTS_MSG)
 
     for r in resources:
-        result = f'<b>{r.title}</b>\n\n' \
-                 f'{r.discipline}\n' \
-                 f'🎓 {r.course} курс\n' \
-                 f'📊 Рейтинг: {r.rating}'
+        r.views += 1
 
+        result = format_material(r)
         markup = generate_result_markup(r.id)
         bot.send_message(chat_id, result, reply_markup=markup, parse_mode='html')
 
+    session.commit()
     bot.send_message(chat_id, search_found_msg(resources_n))
 
 
@@ -183,16 +189,19 @@ def download_file(query):
         bot.answer_callback_query(callback_query_id=query.id)
         return initiate_registration(user_id, query.from_user)
 
-    file_id = session.query(Resource.file_id) \
-        .filter(Resource.id == db_file_id) \
-        .scalar()
+    resource = session.query(Resource) \
+        .filter(Resource.id == db_file_id)
 
-    if not file_id:
+    if resource.count() == 0:
         return bot.answer_callback_query(callback_query_id=query.id,
                                          text=FILE_NOT_FOUND_MSG)
 
+    resource = resource.one()
+    resource.downloads += 1
+    session.commit()
+
     bot.send_message(user_id, text=DOWNLOAD_SUCCESS_MSG)
-    bot.send_document(user_id, file_id)
+    bot.send_document(user_id, resource.file_id)
     bot.answer_callback_query(callback_query_id=query.id)
 
 
@@ -307,6 +316,7 @@ def check_subject(message):
         return bot.register_next_step_handler(instruction, check_subject)
 
     states[chat_id].uploading_material.discipline = message.text
+
     save_states(redis_conn, states)
 
     instruction = bot.send_message(chat_id, UPLOAD_FILE_MSG,
@@ -328,6 +338,8 @@ def check_file(message):
 
     uploading_material.file_id = message.document.file_id
     uploading_material.rating = 0
+    uploading_material.views = 0
+    uploading_material.downloads = 0
 
     session.add(uploading_material)
     session.commit()
@@ -425,6 +437,62 @@ def handle_cancel(message, mode=None):
         bot.send_message(chat_id, cancel_msg(mode), reply_markup=no_keyboard)
 
     call(message)
+
+
+def generate_control_markup(material_id):
+    markup = InlineKeyboardMarkup()
+
+    del_data = json.dumps({'action': 'delete', 'id': material_id})
+    del_btn = InlineKeyboardButton(text='Удалить', callback_data=del_data)
+
+    markup.add(del_btn)
+    return markup
+
+
+@bot.message_handler(commands=['myfiles'])
+def handle_myfiles(message):
+    chat_id = message.chat.id
+
+    if not check_verification(message.from_user.id):
+        return initiate_registration(chat_id, message.from_user)
+
+    files = session.query(Resource) \
+        .filter(Resource.author_id == message.from_user.id)
+
+    if files.count() == 0:
+        return bot.send_message(chat_id, NOTHING_UPLOADED_MSG)
+
+    for file in files:
+        result = format_material(file)
+        result += f'\n👀 Просмотров: {file.views}\n' \
+                  f'📥 Скачиваний: {file.downloads}'
+
+        markup = generate_control_markup(file.id)
+        bot.send_message(chat_id, result, parse_mode='html', reply_markup=markup)
+
+
+@bot.callback_query_handler(
+    lambda query: json.loads(query.data)['action'] == 'delete')
+def delete_material(query):
+    user_id = query.from_user.id
+    db_file_id = json.loads(query.data)['id']
+
+    if not check_verification(user_id):
+        bot.answer_callback_query(callback_query_id=query.id)
+        return initiate_registration(user_id, query.from_user)
+
+    resource = session.query(Resource) \
+        .filter(Resource.id == db_file_id)
+
+    if resource.count() == 0:
+        return bot.answer_callback_query(callback_query_id=query.id,
+                                         text=FILE_NOT_FOUND_MSG)
+
+    resource.delete()
+    session.commit()
+
+    bot.send_message(user_id, text=DELETE_SUCCESS_MSG)
+    bot.answer_callback_query(callback_query_id=query.id)
 
 
 @bot.message_handler(commands=['about'])

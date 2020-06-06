@@ -1,4 +1,5 @@
-COMMANDS = ['/start', '/help', '/search', '/about', '/upload', '/cancel']
+COMMANDS = ['/start', '/help', '/search', '/about',
+            '/upload', '/cancel', '/myfiles']
 
 SUBJECTS = [
     '💻 Программирование',

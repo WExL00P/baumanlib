@@ -13,9 +13,11 @@ class Resource(base):
     title = Column(String)
     author_id = Column(Integer)
     course = Column(Integer)
-    discipline = Column(Integer)
+    discipline = Column(String)
     rating = Column(Integer)
     file_id = Column(String)
+    views = Column(Integer)
+    downloads = Column(Integer)
 
 
 class User(base):
