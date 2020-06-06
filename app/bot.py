@@ -382,13 +382,13 @@ def check_email(message):
 
     state = states[chat_id]
 
-    state.registering_user.code = str(int.from_bytes(os.urandom(2), "little"))
+    state.registering_user.code = str(int.from_bytes(os.urandom(2), 'little'))
     state.registering_user.email = message.text
 
     # ставим статус боту, пока письмо отправляется
     bot.send_chat_action(chat_id, 'typing')
 
-    send_email(state.registering_user.email, "Регистрация в боте BaumanLib",
+    send_email(state.registering_user.email, 'Регистрация в боте BaumanLib',
                state.registering_user.code)
 
     state.last_email_date = datetime.now()
