@@ -1,4 +1,4 @@
-from check_correct import *
+from validators import *
 
 
 class Document:

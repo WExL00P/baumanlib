@@ -1,4 +1,4 @@
-from message_templates import *
+from templates import *
 
 
 def test_search_found_msg():

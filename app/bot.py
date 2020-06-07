@@ -10,8 +10,8 @@ from telebot.types import (
     InlineKeyboardMarkup
 )
 from config import SUBJECTS, COMMANDS
-from message_templates import *
-from check_correct import *
+from templates import *
+from validators import *
 from utils import send_email, ALL_CONTENT_TYPES
 from db import (
     session, Resource, Mark, User,
