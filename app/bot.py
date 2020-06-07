@@ -65,10 +65,10 @@ def generate_result_markup(material_id):
     btn_download = InlineKeyboardButton(text='Скачать', callback_data=dwn_data)
 
     up_data = json.dumps({'action': 'up', 'id': material_id, 'value': 1})
-    btn_up = InlineKeyboardButton(text='+1', callback_data=up_data)
+    btn_up = InlineKeyboardButton(text='👍', callback_data=up_data)
 
     down_data = json.dumps({'action': 'down', 'id': material_id, 'value': -1})
-    btn_down = InlineKeyboardButton(text='-1', callback_data=down_data)
+    btn_down = InlineKeyboardButton(text='👎', callback_data=down_data)
 
     markup.add(btn_down, btn_download, btn_up)
     return markup
