@@ -35,6 +35,8 @@ def call(message):
         handle_about(message)
     elif message.text == '/upload':
         handle_upload(message)
+    elif message.text == '/myfiles':
+        handle_myfiles(message)
     elif message.text == '/help':
         handle_help(message)
 
@@ -58,7 +60,13 @@ def handle_search(message):
     bot.register_next_step_handler(instruction, check_query)
 
 
-def generate_result_markup(material_id):
+def generate_result_markup(material_id: int) -> InlineKeyboardMarkup:
+    """
+    Создает разметку с кнопками рейтинга и скачивания
+    для сообщения с материалом
+    :param material_id: уникальный идентификатор материала
+    :return: разметка с кнопками
+    """
     markup = InlineKeyboardMarkup()
 
     dwn_data = json.dumps({'action': 'download', 'id': material_id})
@@ -74,7 +82,12 @@ def generate_result_markup(material_id):
     return markup
 
 
-def format_material(material):
+def format_material(material: Resource) -> str:
+    """
+    Форматирует информацию о материале
+    :param material: материал
+    :return: форматированная строка с информацией о материале
+    """
     return f'<b>{material.title}</b>\n\n' \
         f'{material.discipline}\n' \
         f'🎓 {material.course} курс\n' \
@@ -202,8 +215,6 @@ def download_file(query):
 
 
 def initiate_registration(chat_id, from_user):
-    markup = None
-
     state = get_state(chat_id)
     if not state:
         state = State()
@@ -219,6 +230,8 @@ def initiate_registration(chat_id, from_user):
 
         if seconds_left > 0:
             return bot.send_message(chat_id, reg_limit_msg(seconds_left))
+
+    markup = None
 
     if last_name:
         markup = ReplyKeyboardMarkup(one_time_keyboard=True)
@@ -242,7 +255,12 @@ def handle_upload(message):
     bot.register_next_step_handler(instruction, check_material)
 
 
-def check_verification(user_id):
+def check_verification(user_id: int) -> bool:
+    """
+    Проверяет, зарегистрирован ли пользователь
+    :param user_id: уникальный идентификатор пользователя
+    :return: зарегистрирован ли пользователь или нет
+    """
     verified = session.query(User.verified) \
         .filter(User.user_id == user_id) \
         .scalar()
@@ -267,8 +285,7 @@ def check_material(message):
     if not state:
         state = State()
 
-    state.uploading_material = Resource(title=message.text,
-                                                  author_id=author_id)
+    state.uploading_material = Resource(title=message.text, author_id=author_id)
 
     save_state(chat_id, state)
 
@@ -446,7 +463,12 @@ def handle_cancel(message, mode=None):
     call(message)
 
 
-def generate_control_markup(material_id):
+def generate_control_markup(material_id: int) -> InlineKeyboardMarkup:
+    """
+    Создает разметку с кнопкой удаления для сообщения с материалом
+    :param material_id: уникальный идентификатор материала
+    :return: разметка с кнопкой
+    """
     markup = InlineKeyboardMarkup()
 
     del_data = json.dumps({'action': 'delete', 'id': material_id})
