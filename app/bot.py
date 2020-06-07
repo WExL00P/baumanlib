@@ -209,6 +209,7 @@ def download_file(query):
     resource.downloads += 1
     session.commit()
 
+    bot.forward_message(user_id, user_id, query.message.message_id)
     bot.send_message(user_id, text=DOWNLOAD_SUCCESS_MSG)
     bot.send_document(user_id, resource.file_id)
     bot.answer_callback_query(callback_query_id=query.id)
