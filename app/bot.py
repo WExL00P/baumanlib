@@ -162,6 +162,15 @@ def change_rating(query):
         resource.rating += rating
         msg = f'Материал оценён на {rating}'
 
+    markup = generate_result_markup(resource.id)
+    bot.edit_message_text(
+        format_material(resource),
+        parse_mode='html',
+        reply_markup=markup,
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id
+    )
+
     bot.answer_callback_query(callback_query_id=query.id, text=msg)
     session.commit()
 
