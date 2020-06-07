@@ -497,8 +497,8 @@ def delete_material(query):
     resource.delete()
     session.commit()
 
-    bot.send_message(user_id, text=DELETE_SUCCESS_MSG)
-    bot.answer_callback_query(callback_query_id=query.id)
+    bot.delete_message(query.message.chat.id, query.message.message_id)
+    bot.answer_callback_query(callback_query_id=query.id, text=DELETE_SUCCESS_MSG)
 
 
 @bot.message_handler(commands=['about'])
