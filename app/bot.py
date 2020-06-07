@@ -213,7 +213,7 @@ def initiate_registration(chat_id, from_user):
 
     bot.send_message(chat_id, NEEDS_REG_MSG)
 
-    if state.last_email_date and state.email_attempt > MAX_NO_LIMIT_ATTEMPTS:
+    if state.last_email_date and state.email_attempt >= MAX_NO_LIMIT_ATTEMPTS:
         seconds_passed = (datetime.now() - state.last_email_date).seconds
         seconds_left = EMAIL_LIMIT - seconds_passed
 
@@ -411,7 +411,16 @@ def check_code(message):
     state = get_state(chat_id)
     registering_user = state.registering_user
 
-    if not is_text(message) or registering_user.code != message.text:
+    if registering_user.code != message.text:
+        state.code_attempt += 1
+        save_state(chat_id, state)
+
+        if state.code_attempt >= MAX_CODE_ATTEMPTS:
+            handle_cancel(message, 'регистрации')
+            state.code_attempt = 0
+            save_state(chat_id, state)
+            return bot.send_message(chat_id, CODE_LIMIT_MSG)
+
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_code)
 
@@ -429,8 +438,6 @@ def check_code(message):
 @bot.message_handler(commands=['cancel'])
 def handle_cancel(message, mode=None):
     chat_id = message.chat.id
-
-    clear_state(chat_id)
 
     if mode:
         no_keyboard = ReplyKeyboardRemove()

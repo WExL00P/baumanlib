@@ -57,6 +57,7 @@ class State:
         self.registering_user = None  # текущий регистрирующийся пользователь
         self.last_email_date = None  # дата последней отправки письма с кодом
         self.email_attempt = 0  # количество отправленных писем с кодом
+        self.code_attempt = 0  # количество неверно введенных кодов
 
 
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
