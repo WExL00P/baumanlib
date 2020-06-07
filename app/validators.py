@@ -125,3 +125,18 @@ def is_email_correct(message):
         return False
 
     return valid.ascii_domain in ALLOWED_MAIL_DOMAINS
+
+
+def is_text(message):
+    """
+    Проверяет, является ли сообщение обычным текстом
+    :param message: сообщение пользователя
+    :return: является ли сообщение текстом или нет
+    """
+    if not hasattr(message, 'text'):
+        return False
+
+    if not hasattr(message, 'content_type'):
+        return False
+
+    return message.content_type == 'text' and not message.text.startswith('/')

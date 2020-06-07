@@ -87,7 +87,7 @@ def check_query(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'поиска')
 
-    if message.content_type != 'text' or message.text.startswith('/'):
+    if not is_text(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_query)
 
@@ -257,8 +257,7 @@ def check_material(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if message.content_type != 'text' or message.text.startswith('/') \
-            or not is_title_correct(message):
+    if not is_text(message) or not is_title_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_material)
 
@@ -283,8 +282,7 @@ def check_course(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if message.content_type != 'text' or message.text.startswith('/') \
-            or not is_course_correct(message):
+    if not is_text(message) or not is_course_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_course)
 
@@ -308,8 +306,7 @@ def check_subject(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if message.content_type != 'text' or message.text.startswith('/') \
-            or not is_subject_correct(message):
+    if not is_text(message) or not is_subject_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
@@ -357,8 +354,7 @@ def check_name_surname(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
-    if message.content_type != 'text' or message.text.startswith('/') \
-            or not is_name_surname_correct(message):
+    if not is_text(message) or not is_name_surname_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
@@ -382,8 +378,7 @@ def check_email(message):
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
-    if message.content_type != 'text' or message.text.startswith('/') \
-            or not is_email_correct(message):
+    if not is_text(message) or not is_email_correct(message):
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_email)
 
@@ -416,8 +411,7 @@ def check_code(message):
     state = get_state(chat_id)
     registering_user = state.registering_user
 
-    if message.content_type != 'text' or message.text.startswith('/') \
-            or registering_user.code != message.text:
+    if not is_text(message) or registering_user.code != message.text:
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_code)
 

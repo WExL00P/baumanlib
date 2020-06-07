@@ -143,3 +143,18 @@ def test_is_file_correct():
 
     message.document.mime_type = 'application/pdf'
     assert is_file_correct(message) is True
+
+
+def test_is_text():
+    """
+    Выполняет модульное тестирование функции is_text
+    """
+    assert is_text('') is False
+    assert is_text('hello') is False
+    assert is_text(Message('/hello')) is False
+    assert is_text(Message('o')) is False
+
+    valid_text = Message('o')
+    valid_text.content_type = 'text'
+
+    assert is_text(valid_text) is True
