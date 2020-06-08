@@ -12,7 +12,11 @@
 🔎 &nbsp;Искать уже загруженные материалы по ключевым словам, темам  
 📈 &nbsp;Оценивать загруженные материалы, давая другим возможность находить достойные материалы быстрее
 
-# [Презентация](https://docs.google.com/presentation/d/1NCrHb_6dZwx9Mdee4IFCEraJvvoCE4pDSzaWHr8IlLc/edit#slide=id.g87d98e1a80_2_67)
+# [Отчет](/Отчет.pdf)
+
+# [Презентация 2 этапа](https://docs.google.com/presentation/d/19iIsRSZgk-20kNCBKXu8IJzwvj_LuJkeJr-4oVEMjvk/edit?usp=sharing)
+
+# [Презентация 1 этапа](https://docs.google.com/presentation/d/1NCrHb_6dZwx9Mdee4IFCEraJvvoCE4pDSzaWHr8IlLc/edit#slide=id.g87d98e1a80_2_67)
 
 # Команда
 
