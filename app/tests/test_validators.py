@@ -20,7 +20,7 @@ def test_is_title_correct():
     assert is_title_correct(Message('')) is False
     assert is_title_correct(Message('  ')) is False
     assert is_title_correct(Message('/')) is False
-    assert is_title_correct(1488) is False
+    assert is_title_correct(7777) is False
     assert is_title_correct(Message('235628')) is False
     assert is_title_correct(Message('Sweet dreams are made of this')) is True
     assert is_title_correct(Message('Who am I 2 disagree')) is True
@@ -43,7 +43,7 @@ def test_is_course_correct():
     assert is_course_correct(Message('')) is False
     assert is_course_correct(Message('  ')) is False
     assert is_course_correct(Message('/')) is False
-    assert is_course_correct(1488) is False
+    assert is_course_correct(7777) is False
     assert is_course_correct(Message('букавки')) is False
     assert is_course_correct(Message('0')) is False
     assert is_course_correct(Message('-1')) is False
@@ -65,7 +65,7 @@ def test_is_subject_correct():
     assert is_subject_correct(Message('')) is False
     assert is_subject_correct(Message('  ')) is False
     assert is_subject_correct(Message('/')) is False
-    assert is_subject_correct(1488) is False
+    assert is_subject_correct(7777) is False
     assert is_subject_correct(Message('67')) is False
     assert is_subject_correct(Message(':^)')) is False
     assert is_subject_correct(Message('История;)')) is False
@@ -82,7 +82,7 @@ def test_is_name_surname_correct():
     assert is_name_surname_correct(Message('')) is False
     assert is_name_surname_correct(Message('  ')) is False
     assert is_name_surname_correct(Message('/')) is False
-    assert is_name_surname_correct(1488) is False
+    assert is_name_surname_correct(7777) is False
     assert is_name_surname_correct(Message('128')) is False
     assert is_name_surname_correct(Message('(^:)')) is False
     assert is_name_surname_correct(Message('П')) is False
@@ -103,7 +103,7 @@ def test_is_email_correct():
     assert is_email_correct(Message(' ')) is False
     assert is_email_correct(Message('@')) is False
     assert is_email_correct(Message('@.')) is False
-    assert is_email_correct(1488) is False
+    assert is_email_correct(7777) is False
     assert is_email_correct(Message('@s')) is False
     assert is_email_correct(Message('s@s')) is False
     assert is_email_correct(Message('s@s.s')) is False
