@@ -70,8 +70,8 @@ def test_is_subject_correct():
     assert is_subject_correct(Message(':^)')) is False
     assert is_subject_correct(Message('История;)')) is False
     assert is_subject_correct(Message('Мотемотика')) is False
-    assert is_subject_correct(Message('Программирование')) is True
-    assert is_subject_correct(Message('ПРОГРАММИРОВАНИЕ')) is True
+    assert is_subject_correct(Message('Программирование')) is not False
+    assert is_subject_correct(Message('ПРОГРАММИРОВАНИЕ')) is not False
 
 
 def test_is_name_surname_correct():
