@@ -100,7 +100,13 @@ FILE_NOT_FOUND_MSG = 'Я не смог найти этот материал :( �
 NOTHING_UPLOADED_MSG = 'Ты пока ничего не загрузил в мою библиотеку :('
 
 
-def search_found_msg(count):
+def search_found_msg(count: int) -> str:
+    """
+    Склоняет слова в SEARCH_FOUND_MSG в зависимости от количества
+    материалов (именительный падеж)
+    :param count: количество материалов
+    :return: форматированная строка
+    """
     remainder = count % 10
 
     if 11 <= count <= 19 or remainder == 0:
@@ -120,11 +126,22 @@ def search_found_msg(count):
     return msg
 
 
-def cancel_msg(mode):
+def cancel_msg(mode: str) -> str:
+    """
+    Форматирует CANCEL_MSG
+    :param mode: режим, из которого происходит выход
+    :return: форматированная строка
+    """
     return CANCEL_MSG.format(mode)
 
 
-def reg_limit_msg(seconds):
+def reg_limit_msg(seconds: int) -> str:
+    """
+    Склоняет слова в REG_LIMIT_MSG в зависимости от количества
+    секунд (именительный падеж)
+    :param seconds: количество секунд
+    :return: форматированная строка
+    """
     remainder = seconds % 10
 
     if 11 <= seconds <= 19 or remainder == 0:

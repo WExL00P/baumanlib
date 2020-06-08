@@ -63,20 +63,34 @@ class State:
 redis_conn = redis.Redis.from_url(os.getenv('REDIS_URL'))
 
 
-def save_state(user_id, state):
+def save_state(user_id: int, state: State):
+    """
+    Сохраняет текущее состояние пользователя в Redis
+    :param user_id: уникальный идентификатор пользователя
+    :param state: объект состояния пользователя
+    """
     redis_conn.set(f'state:{user_id}', pickle.dumps(state))
 
 
-def get_state(user_id):
+def get_state(user_id: int) -> State:
+    """
+    Получает текущее состояние пользователя из Redis
+    :param user_id: уникальный идентификатор пользователя
+    :return: объект состояния пользователя
+    """
     key = f'state:{user_id}'
 
     if not redis_conn.exists(key):
-        return {}
+        return State()
 
     return pickle.loads(redis_conn.get(key))
 
 
-def clear_state(user_id):
+def clear_state(user_id: int):
+    """
+    Удаляет текущее состояние пользователя из Redis
+    :param user_id: уникальный идентификатор пользователя
+    """
     redis_conn.delete(f'state:{user_id}')
 
 

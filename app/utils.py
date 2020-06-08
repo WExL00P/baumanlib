@@ -8,7 +8,13 @@ ALL_CONTENT_TYPES = ['text', 'audio', 'document', 'photo', 'sticker', 'video',
                      'video_note', 'voice', 'location', 'contact', 'poll']
 
 
-def send_email(address, subject, body):
+def send_email(address: str, subject: str, body: str):
+    """
+    Отправляет письмо с указанной темой и сообщением на адрес
+    :param address: адрес получателя
+    :param subject: тема письма
+    :param body: тело письма (сообщение)
+    """
     try:
         server = smtplib.SMTP('smtp.gmail.com:587')
         server.ehlo()
@@ -21,11 +27,15 @@ def send_email(address, subject, body):
 
         server.sendmail(os.getenv('EMAIL_ADDRESS'), address, msg.as_string())
         server.quit()
-    except:
+    except smtplib.SMTPException:
         print('Email failed to send.')
 
 
-def remove_emoji(string):
+def remove_emoji(string: str) -> str:
+    """
+    Удаляет эмодзи из строки
+    :param string: строка с эмодзи
+    """
     emoji_pattern = re.compile('['
                                u'\U0001F600-\U0001F64F'
                                u'\U0001F300-\U0001F5FF'

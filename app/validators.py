@@ -1,9 +1,11 @@
+from typing import Union
+from telebot.types import Message
 from config import *
 from email_validator import validate_email, EmailNotValidError
 from utils import remove_emoji
 
 
-def is_title_correct(message):
+def is_title_correct(message: Message) -> bool:
     """
     Проверяет корректность введенного описания материала
     :param message: сообщение пользователя с описанием материала
@@ -24,7 +26,7 @@ def is_title_correct(message):
     return False
 
 
-def is_course_correct(message):
+def is_course_correct(message: Message) -> bool:
     """
     Проверяет корректность введенного курса
     :param message: сообщение пользователя с номером курса
@@ -41,11 +43,11 @@ def is_course_correct(message):
     return COURSE_MIN <= int(text) <= COURSE_MAX
 
 
-def is_subject_correct(message):
+def is_subject_correct(message: Message) -> Union[str, bool]:
     """
     Проверяет корректность введенного предмета
     :param message: сообщение пользователя с названием предмета
-    :return: является ли предмет корректным или нет
+    :return: предмет, если название корректное, False в ином случае
     """
     if not hasattr(message, 'text'):
         return False
@@ -53,14 +55,13 @@ def is_subject_correct(message):
     text = remove_emoji(message.text).upper().strip()
 
     for subject in SUBJECTS:
-        subject = remove_emoji(subject).upper().strip()
-        if subject == text:
-            return True
+        if remove_emoji(subject).upper().strip() == text:
+            return subject
 
     return False
 
 
-def is_file_correct(message):
+def is_file_correct(message: Message) -> bool:
     """
     Проверяет корректность отправленного пользователем файла
     :param message: сообщение пользователя с файлом
@@ -85,7 +86,7 @@ def is_file_correct(message):
     return extension in ALLOWED_EXTENSIONS
 
 
-def is_name_surname_correct(message):
+def is_name_surname_correct(message: Message) -> bool:
     """
     Проверяет корректность имени, фамилии пользователя
     :param message: сообщение пользователя с именем и фамилией
@@ -106,7 +107,7 @@ def is_name_surname_correct(message):
     return True
 
 
-def is_email_correct(message):
+def is_email_correct(message: Message) -> bool:
     """
     Проверяет корректность адреса почты и ее принадлежность
     студенту МГТУ им. Н.Э. Баумана
@@ -127,7 +128,7 @@ def is_email_correct(message):
     return valid.ascii_domain in ALLOWED_MAIL_DOMAINS
 
 
-def is_text(message):
+def is_text(message: Message) -> bool:
     """
     Проверяет, является ли сообщение обычным текстом
     :param message: сообщение пользователя

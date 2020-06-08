@@ -7,7 +7,7 @@ from sqlalchemy import or_, and_
 from telebot.types import (
     KeyboardButton, ReplyKeyboardMarkup,
     ReplyKeyboardRemove, InlineKeyboardButton,
-    InlineKeyboardMarkup
+    InlineKeyboardMarkup, Message, CallbackQuery
 )
 from config import SUBJECTS, COMMANDS
 from templates import *
@@ -26,7 +26,14 @@ bot = telebot.TeleBot(
 )
 
 
-def call(message):
+def call(message: Message):
+    """
+    Вспомогательная функция, которая вызывает
+    необходимый обработчик в зависимости от команды пользователя.
+    Функция нужна для программного вызова команд без необходимости
+    их отправки в чат.
+    :param message: сообщение пользователя
+    """
     if message.text == '/start':
         handle_start(message)
     elif message.text == '/search':
@@ -42,19 +49,31 @@ def call(message):
 
 
 @bot.message_handler(commands=['start'])
-def handle_start(message):
+def handle_start(message: Message):
+    """
+    Обрабатывает команду /start
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
     bot.send_message(chat_id, START_MSG)
 
 
 @bot.message_handler(commands=['help'])
-def handle_help(message):
+def handle_help(message: Message):
+    """
+    Обрабатывает команду /help
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
     bot.send_message(chat_id, HELP_MSG)
 
 
 @bot.message_handler(commands=['search'])
-def handle_search(message):
+def handle_search(message: Message):
+    """
+    Обрабатывает команду /search
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
     instruction = bot.send_message(chat_id, SEARCH_MSG)
     bot.register_next_step_handler(instruction, check_query)
@@ -94,7 +113,12 @@ def format_material(material: Resource) -> str:
         f'📊 Рейтинг: {material.rating}'
 
 
-def check_query(message):
+def check_query(message: Message):
+    """
+    Проверяет поисковый запрос пользователя и выводит
+    результат в виде сообщений в чат
+    :param message: сообщение пользователя с поисковым запросом
+    """
     chat_id = message.chat.id
 
     if message.text in COMMANDS:
@@ -126,9 +150,22 @@ def check_query(message):
     bot.send_message(chat_id, search_found_msg(resources_n))
 
 
-@bot.callback_query_handler(
-    lambda query: json.loads(query.data)['action'] in ['up', 'down'])
-def change_rating(query):
+def get_action(callback_data: str) -> str:
+    """
+    Возвращает тип события, переданного кнопкой в виде JSON
+    :param callback_data: информация о событии в виде JSON
+    :return: тип события
+    """
+    return json.loads(callback_data)['action']
+
+
+@bot.callback_query_handler(lambda query: get_action(query.data) in ['up', 'down'])
+def change_rating(query: CallbackQuery):
+    """
+    Обрабатывает нажатие кнопок рейтинга,
+    меняя его у соответствующего материала
+    :param query: запрос, отправляемый кнопкой в момент нажатия
+    """
     query_json = json.loads(query.data)
 
     user_id = query.from_user.id
@@ -137,7 +174,7 @@ def change_rating(query):
 
     if not check_verification(user_id):
         bot.answer_callback_query(callback_query_id=query.id)
-        return initiate_registration(user_id, query.from_user)
+        return initiate_registration(query.from_user)
 
     resource = session.query(Resource) \
         .filter(Resource.id == file_id)
@@ -175,6 +212,9 @@ def change_rating(query):
         resource.rating += rating
         msg = f'Материал оценён на {rating}'
 
+    session.commit()
+
+    # обновляем рейтинг в уже отправленном сообщении с материалом
     markup = generate_result_markup(resource.id)
     bot.edit_message_text(
         format_material(resource),
@@ -185,18 +225,21 @@ def change_rating(query):
     )
 
     bot.answer_callback_query(callback_query_id=query.id, text=msg)
-    session.commit()
 
 
-@bot.callback_query_handler(
-    lambda query: json.loads(query.data)['action'] == 'download')
-def download_file(query):
+@bot.callback_query_handler(lambda query: get_action(query.data) == 'download')
+def download_file(query: CallbackQuery):
+    """
+    Обрабатывает нажатие кнопки скачивания,
+    отправляя пользователю запрашиваемый материал
+    :param query: запрос, отправляемый кнопкой в момент нажатия
+    """
     user_id = query.from_user.id
     db_file_id = json.loads(query.data)['id']
 
     if not check_verification(user_id):
         bot.answer_callback_query(callback_query_id=query.id)
-        return initiate_registration(user_id, query.from_user)
+        return initiate_registration(query.from_user)
 
     resource = session.query(Resource) \
         .filter(Resource.id == db_file_id)
@@ -215,22 +258,24 @@ def download_file(query):
     bot.answer_callback_query(callback_query_id=query.id)
 
 
-def initiate_registration(chat_id, from_user):
-    state = get_state(chat_id)
-    if not state:
-        state = State()
+def initiate_registration(user: telebot.types.User):
+    """
+    Запускает процесс регистрации для пользователя
+    :param user: пользователь, которого необходимо зарегистрировать
+    """
+    state = get_state(user.id)
 
-    first_name = from_user.first_name
-    last_name = from_user.last_name
+    first_name = user.first_name
+    last_name = user.last_name
 
-    bot.send_message(chat_id, NEEDS_REG_MSG)
+    bot.send_message(user.id, NEEDS_REG_MSG)
 
     if state.last_email_date and state.email_attempt >= MAX_NO_LIMIT_ATTEMPTS:
         seconds_passed = (datetime.now() - state.last_email_date).seconds
         seconds_left = EMAIL_LIMIT - seconds_passed
 
         if seconds_left > 0:
-            return bot.send_message(chat_id, reg_limit_msg(seconds_left))
+            return bot.send_message(user.id, reg_limit_msg(seconds_left))
 
     markup = None
 
@@ -238,19 +283,23 @@ def initiate_registration(chat_id, from_user):
         markup = ReplyKeyboardMarkup(one_time_keyboard=True)
         markup.row(KeyboardButton(f'{first_name} {last_name}'))
 
-    save_state(chat_id, state)
+    save_state(user.id, state)
 
-    instruction = bot.send_message(chat_id, REG_NAME_SURNAME_MSG,
+    instruction = bot.send_message(user.id, REG_NAME_SURNAME_MSG,
                                    reply_markup=markup)
     return bot.register_next_step_handler(instruction, check_name_surname)
 
 
 @bot.message_handler(commands=['upload'])
-def handle_upload(message):
+def handle_upload(message: Message):
+    """
+    Обрабатывает команду /upload
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
 
     if not check_verification(message.from_user.id):
-        return initiate_registration(chat_id, message.from_user)
+        return initiate_registration(message.from_user)
 
     instruction = bot.send_message(chat_id, UPLOAD_TITLE_MSG)
     bot.register_next_step_handler(instruction, check_material)
@@ -269,32 +318,39 @@ def check_verification(user_id: int) -> bool:
     return verified
 
 
-def check_material(message):
-    chat_id = message.chat.id
+def check_material(message: Message):
+    """
+    Обрабатывает введенное пользователем название материала
+    для загрузки
+    :param message: сообщение пользователя с названием материала
+    """
     author_id = message.from_user.id
 
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
     if not is_text(message) or not is_title_correct(message):
-        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        instruction = bot.send_message(author_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_material)
 
+    # так как сообщения в поиске выводятся в HTML,
+    # для защиты необходимо экранировать пользовательский ввод
     message.text = escape(message.text)
 
-    state = get_state(chat_id)
-    if not state:
-        state = State()
-
+    state = get_state(author_id)
     state.uploading_material = Resource(title=message.text, author_id=author_id)
+    save_state(author_id, state)
 
-    save_state(chat_id, state)
-
-    instruction = bot.send_message(chat_id, UPLOAD_COURSE_MSG)
+    instruction = bot.send_message(author_id, UPLOAD_COURSE_MSG)
     bot.register_next_step_handler(instruction, check_course)
 
 
-def check_course(message):
+def check_course(message: Message):
+    """
+    Обрабатывает введенный пользователем курс материала
+    для загрузки
+    :param message: сообщение пользователя с курсом материала
+    """
     chat_id = message.chat.id
 
     if message.text in COMMANDS:
@@ -318,18 +374,25 @@ def check_course(message):
     bot.register_next_step_handler(instruction, check_subject)
 
 
-def check_subject(message):
+def check_subject(message: Message):
+    """
+    Обрабатывает введенный пользователем предмет материала
+    для загрузки
+    :param message: сообщение пользователя с предметом материала
+    """
     chat_id = message.chat.id
 
     if message.text in COMMANDS:
         return handle_cancel(message, 'загрузки')
 
-    if not is_text(message) or not is_subject_correct(message):
+    correct_subject = is_subject_correct(message)
+
+    if not is_text(message) or not correct_subject:
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_subject)
 
     state = get_state(chat_id)
-    state.uploading_material.discipline = message.text
+    state.uploading_material.discipline = correct_subject
 
     save_state(chat_id, state)
 
@@ -338,7 +401,12 @@ def check_subject(message):
     bot.register_next_step_handler(instruction, check_file)
 
 
-def check_file(message):
+def check_file(message: Message):
+    """
+    Обрабатывает отправленный пользователем файл материала
+    для загрузки
+    :param message: сообщение пользователя с файлом материала
+    """
     chat_id = message.chat.id
 
     if message.text in COMMANDS:
@@ -365,32 +433,38 @@ def check_file(message):
     bot.send_message(chat_id, UPLOAD_SUCCESS_MSG)
 
 
-def check_name_surname(message):
-    chat_id = message.chat.id
-    user_id = message.from_user.id
+def check_name_surname(message: Message):
+    """
+    Обрабатывает введенные пользователем имя и фамилию
+    при регистрации
+    :param message: сообщение пользователя с именем и фамилией
+    """
+    user_id = message.chat.id
 
     if message.text in COMMANDS:
         return handle_cancel(message, 'регистрации')
 
     if not is_text(message) or not is_name_surname_correct(message):
-        instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
+        instruction = bot.send_message(user_id, INCORRECT_DATA_MSG)
         return bot.register_next_step_handler(instruction, check_name_surname)
 
     message.text = escape(message.text)
 
-    state = get_state(chat_id)
-    if not state:
-        state = State()
-
+    state = get_state(user_id)
     state.registering_user = User(user_id=user_id, name=message.text)
-    save_state(chat_id, state)
+    save_state(user_id, state)
 
-    instruction = bot.send_message(chat_id, REG_MAIL_MSG,
+    instruction = bot.send_message(user_id, REG_MAIL_MSG,
                                    reply_markup=ReplyKeyboardRemove())
     bot.register_next_step_handler(instruction, check_email)
 
 
-def check_email(message):
+def check_email(message: Message):
+    """
+    Обрабатывает введенный пользователем адрес электронной почты
+    при регистрации
+    :param message: сообщение пользователя с адресом электронной почты
+    """
     chat_id = message.chat.id
 
     if message.text in COMMANDS:
@@ -408,8 +482,11 @@ def check_email(message):
     # ставим статус боту, пока письмо отправляется
     bot.send_chat_action(chat_id, 'typing')
 
-    send_email(state.registering_user.email, 'Регистрация в боте BaumanLib',
-               state.registering_user.code)
+    send_email(
+        state.registering_user.email,
+        'Регистрация в боте BaumanLib',
+        state.registering_user.code
+    )
 
     state.last_email_date = datetime.now()
     state.email_attempt += 1
@@ -420,7 +497,11 @@ def check_email(message):
     bot.register_next_step_handler(instruction, check_code)
 
 
-def check_code(message):
+def check_code(message: Message):
+    """
+    Обрабатывает введенный пользователем код при регистрации
+    :param message: сообщение пользователя с кодом
+    """
     chat_id = message.chat.id
 
     if message.text in COMMANDS:
@@ -434,9 +515,10 @@ def check_code(message):
         save_state(chat_id, state)
 
         if state.code_attempt >= MAX_CODE_ATTEMPTS:
-            handle_cancel(message, 'регистрации')
             state.code_attempt = 0
             save_state(chat_id, state)
+
+            handle_cancel(message, 'регистрации')
             return bot.send_message(chat_id, CODE_LIMIT_MSG)
 
         instruction = bot.send_message(chat_id, INCORRECT_DATA_MSG)
@@ -454,7 +536,12 @@ def check_code(message):
 
 
 @bot.message_handler(commands=['cancel'])
-def handle_cancel(message, mode=None):
+def handle_cancel(message: Message, mode: str = None):
+    """
+    Обрабатывает команду /cancel
+    :param message: сообщение пользователя
+    :param mode: название режима, из которого производится вывод
+    """
     chat_id = message.chat.id
 
     if mode:
@@ -480,11 +567,15 @@ def generate_control_markup(material_id: int) -> InlineKeyboardMarkup:
 
 
 @bot.message_handler(commands=['myfiles'])
-def handle_myfiles(message):
+def handle_myfiles(message: Message):
+    """
+    Обрабатывает команду /myfiles
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
 
     if not check_verification(message.from_user.id):
-        return initiate_registration(chat_id, message.from_user)
+        return initiate_registration(message.from_user)
 
     files = session.query(Resource) \
         .filter(Resource.author_id == message.from_user.id)
@@ -501,15 +592,19 @@ def handle_myfiles(message):
         bot.send_message(chat_id, result, parse_mode='html', reply_markup=markup)
 
 
-@bot.callback_query_handler(
-    lambda query: json.loads(query.data)['action'] == 'delete')
-def delete_material(query):
+@bot.callback_query_handler(lambda query: get_action(query.data) == 'delete')
+def delete_material(query: CallbackQuery):
+    """
+    Обрабатывает нажатие кнопки удаления,
+    удаляя материал из базы и из чата с пользователем
+    :param query: запрос, отправляемый кнопкой в момент нажатия
+    """
     user_id = query.from_user.id
     db_file_id = json.loads(query.data)['id']
 
     if not check_verification(user_id):
         bot.answer_callback_query(callback_query_id=query.id)
-        return initiate_registration(user_id, query.from_user)
+        return initiate_registration(query.from_user)
 
     resource = session.query(Resource) \
         .filter(and_(Resource.id == db_file_id, Resource.author_id == user_id))
@@ -521,17 +616,26 @@ def delete_material(query):
     resource.delete()
     session.commit()
 
-    bot.delete_message(query.message.chat.id, query.message.message_id)
     bot.answer_callback_query(callback_query_id=query.id, text=DELETE_SUCCESS_MSG)
+    bot.delete_message(query.message.chat.id, query.message.message_id)
 
 
 @bot.message_handler(commands=['about'])
-def handle_about(message):
+def handle_about(message: Message):
+    """
+    Обрабатывает команду /about
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
     bot.send_message(chat_id, ABOUT_MSG, parse_mode='html')
 
 
 @bot.message_handler(content_types=ALL_CONTENT_TYPES)
-def handle_unknown(message):
+def handle_unknown(message: Message):
+    """
+    Обрабатывает сообщения, которые не были обработаны
+    другими функциями (неизвестные команды, стикеры, и т.д.)
+    :param message: сообщение пользователя
+    """
     chat_id = message.chat.id
     bot.send_message(chat_id, UNKNOWN_CMD_MSG)
